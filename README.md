@@ -106,11 +106,13 @@ Use the value from the `DeveloperName` column. Append `_v1` to it (e.g., `Custom
 
 **What the script does:**
 - Deploys your response formats and custom connection definition
+- If MIAW handoff is enabled: deploys the handoff code (Apex + Flow + Custom Label)
 - Retrieves your agent's existing config
 - Wires the connection to your agent
+- If MIAW handoff is enabled: wires the handoff action to your agent with escalation instructions baked in
 - Deploys the updated config
 
-Just deactivate your agent before running (the script will remind you) and reactivate it after.
+Just deactivate your agent before running (the script will remind you) and reactivate it after. No manual wiring needed — the script handles everything.
 
 ## Quick Start: Diagnosing a broken connection
 
@@ -359,10 +361,14 @@ When a customer asks something your agent can't handle (complex complaint, sensi
 
 ### After deployment
 
-1. Go to your agent in Agent Builder
-2. Add the "Hand Off to Human Agent via MIAW" action to your agent's escalation topic
-3. Add this instruction to the escalation topic: "When you cannot resolve the issue, use the MIAW handoff action."
-4. Test by triggering an escalation and confirming the session appears in Omni-Channel
+The deploy script handles everything automatically:
+- Deploys the handoff code (Apex + Flow + Custom Label)
+- Wires the handoff action to your agent (available to all topics)
+- Embeds the escalation instruction in the action itself (so the agent knows when to use it)
+
+All you need to do:
+1. Reactivate your agent (Setup > Agents > select your agent > Activate)
+2. Test by asking your agent something it can't handle — it should hand off to a human
 
 ### Troubleshooting handoff
 

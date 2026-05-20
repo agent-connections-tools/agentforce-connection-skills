@@ -732,15 +732,19 @@ exception due to manufacturing defect. Agent cannot authorize exceptions
 beyond policy — escalating to specialist.
 ```
 
-### After deployment — wiring the handoff to your agent
+### After deployment — what the script does for you
 
-The deploy script handles the code deployment. You still need to tell your agent when to use it:
+The deploy script handles everything automatically — no manual Agent Builder work needed:
 
-1. **Open Agent Builder** — Setup > Agents > select your agent
-2. **Find or create an escalation topic** — this is the topic that handles "I can't help you with this"
-3. **Add the action** — In the topic's actions, add "Hand Off to Human Agent via MIAW"
-4. **Add the instruction** — In the topic's instructions, add: "When you cannot resolve the issue after two attempts, or when the customer explicitly asks for a human, use the MIAW handoff action."
-5. **Activate your agent** — the handoff won't work until the agent is active
+1. **Deploys the handoff code** — Apex class, Flow, and Custom Label go to your org
+2. **Wires the action to your agent** — Adds "Hand Off to Human Agent via MIAW" as a global action (available to all topics)
+3. **Embeds the escalation instruction** — The action's description tells the agent when to use it: when it can't resolve an issue after two attempts, when the customer asks for a human, or when the issue requires human judgment
+
+All you do after the script finishes:
+
+1. **Reactivate your agent** — Setup > Agents > select your agent > Activate
+2. **Verify Messaging is active** — Setup > Messaging Settings (should already be set up from prerequisites)
+3. **Verify Omni-Channel routing** — Setup > Omni-Channel > Routing Configuration (queue should have agents assigned)
 
 ### Testing the handoff
 

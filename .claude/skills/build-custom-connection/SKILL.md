@@ -432,18 +432,112 @@ Generate an autolaunched Flow that:
 
 ### Deploy script addition
 
-When MIAW handoff is enabled, add this block to deploy.sh AFTER Stage 1:
+When MIAW handoff is enabled, add this block to deploy.sh AFTER Stage 1 but BEFORE the Stage 2 bundle wiring:
 
 ```bash
 echo "=== Deploying MIAW Handoff Action ==="
 sf project deploy start --source-dir force-app --target-org "$ORG" --wait 10
-
+echo "MIAW Handoff code deployed."
 echo ""
-echo "MIAW Handoff deployed. Post-deployment steps:"
-echo "  1. Verify Messaging for Web is active: Setup > Messaging Settings"
-echo "  2. Add 'Hand Off to Human Agent via MIAW' action to your agent's escalation subagent"
-echo "  3. Add instruction: 'When you cannot resolve the issue, use the MIAW handoff action.'"
-echo "  4. Verify Omni-Channel routing: Setup > Omni-Channel > Routing Configuration"
+```
+
+Then, in the Stage 2 bundle-wiring section (AFTER retrieving the bundle and AFTER adding plannerSurfaces for the custom connection), add the handoff action to the bundle:
+
+```bash
+# === Wire MIAW handoff action to agent ===
+echo "Wiring MIAW handoff action to agent..."
+
+# Check if the handoff action is already wired
+if grep -q "{ClientName}_Escalate_To_MIAW" "$BUNDLE_FILE"; then
+    echo "MIAW handoff action already wired — skipping."
+else
+    # Create the action block and instruction to inject
+    HANDOFF_BLOCK_FILE=$(mktemp)
+    cat > "$HANDOFF_BLOCK_FILE" << 'HANDOFFEOF'
+    <localActionLinks>
+        <genAiFunctionName>MIAWHandoff_{ClientName}</genAiFunctionName>
+    </localActionLinks>
+    <plannerActions>
+        <fullName>MIAWHandoff_{ClientName}</fullName>
+        <description>Transfers the conversation to a human agent via Messaging for In-App and Web. Use this when: (1) you cannot resolve the issue after two attempts, (2) the customer explicitly asks for a human, or (3) the issue requires human judgment (billing disputes, complaints, policy exceptions). Pass the full conversation context including customer name, email, escalation reason, and a summary of what was discussed.</description>
+        <developerName>MIAWHandoff_{ClientName}</developerName>
+        <invocationTarget>{ClientName}_Escalate_To_MIAW</invocationTarget>
+        <invocationTargetType>flow</invocationTargetType>
+        <isConfirmationRequired>false</isConfirmationRequired>
+        <isIncludeInProgressIndicator>true</isIncludeInProgressIndicator>
+        <localDeveloperName>MIAWHandoff_{ClientName}</localDeveloperName>
+        <masterLabel>Hand Off to Human Agent via MIAW</masterLabel>
+    </plannerActions>
+HANDOFFEOF
+
+    # Insert before </GenAiPlannerBundle> using awk (portable across macOS/Linux)
+    awk -v blockfile="$HANDOFF_BLOCK_FILE" '
+        /<\/GenAiPlannerBundle>/ {
+            while ((getline line < blockfile) > 0) print line
+            close(blockfile)
+        }
+        { print }
+    ' "$BUNDLE_FILE" > "${BUNDLE_FILE}.tmp" && mv "${BUNDLE_FILE}.tmp" "$BUNDLE_FILE"
+    rm -f "$HANDOFF_BLOCK_FILE"
+    echo "MIAW handoff action wired to agent."
+fi
+```
+
+Also generate input/output schema files for the action. Create these in the retrieved bundle directory:
+
+```
+retrieved/genAiPlannerBundles/<BundleName>/localActions/MIAWHandoff_{ClientName}/input/schema.json
+retrieved/genAiPlannerBundles/<BundleName>/localActions/MIAWHandoff_{ClientName}/output/schema.json
+```
+
+**input/schema.json:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "conversationId": { "type": "string", "description": "The current session ID" },
+    "customerName": { "type": "string", "description": "Customer's full name" },
+    "customerEmail": { "type": "string", "description": "Customer's email address" },
+    "escalationReason": { "type": "string", "description": "Why the conversation is being escalated" },
+    "conversationSummary": { "type": "string", "description": "Summary of the conversation so far" }
+  },
+  "required": ["conversationId", "customerName", "escalationReason"]
+}
+```
+
+**output/schema.json:**
+```json
+{
+  "type": "object",
+  "properties": {
+    "confirmationMessage": { "type": "string", "description": "Message to show the customer" },
+    "success": { "type": "boolean", "description": "Whether the handoff succeeded" }
+  }
+}
+```
+
+The deploy script should create these schema directories and files dynamically during the bundle-wiring stage.
+
+At the end of the deploy script (when MIAW is enabled), replace the manual post-deployment steps with:
+
+```bash
+echo ""
+echo "=== Done! ==="
+echo ""
+echo "Now reactivate your agent:"
+echo "  Setup → Agents → select your agent → Activate"
+echo ""
+echo "What was automated:"
+echo "  ✓ Custom connection deployed and wired"
+echo "  ✓ MIAW handoff code deployed (Apex + Flow + Custom Label)"
+echo "  ✓ Handoff action wired to your agent (available to all topics)"
+echo "  ✓ Escalation instruction embedded in the action description"
+echo ""
+echo "Verify:"
+echo "  1. Reactivate agent: Setup → Agents → select your agent → Activate"
+echo "  2. Messaging is active: Setup → Messaging Settings"
+echo "  3. Omni-Channel routing: Setup → Omni-Channel → Routing Configuration"
+echo "  4. Test: ask your agent something it can't handle — it should hand off to a human"
 ```
 
 ### Custom Labels (generated alongside)
@@ -457,7 +551,7 @@ Generate a Custom Label for the MIAW deployment name so it's not hardcoded:
 
 Add a "Human Handoff" section to the README:
 - What it does (transfers session context to human via MIAW)
-- How the agent triggers it (escalation instruction + action)
+- How it's wired (automatically — the deploy script adds the action to your agent and embeds the escalation instruction)
 - What context the human agent sees
 - How to test (trigger an escalation, verify Omni-Channel receives the session)
 - Troubleshooting: queue not found, messaging channel not active, conversation summary too long
