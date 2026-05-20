@@ -381,6 +381,10 @@ All you need to do:
 | "Messaging channel not found" | Confirm your MIAW deployment name matches the Custom Label value (Setup > Messaging Settings > Messaging Deployments) |
 | Summary is cut off | The system caps summaries at 4,000 characters. Longer conversations get truncated. |
 
+## WhatsApp Rich Media
+
+For a full solution guide covering architecture, ECA authentication, security, and the end-to-end flow, see **[docs/WHATSAPP.md](./docs/WHATSAPP.md)**.
+
 ## WhatsApp Webhook Handler (Optional)
 
 If you pick "WhatsApp rich media" in question 2, the skill asks a follow-up: do you also want to generate the webhook handler? This is the bridge between Meta's WhatsApp Cloud API and the Agentforce Agent API.
