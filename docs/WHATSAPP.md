@@ -16,21 +16,7 @@ The [Custom Connections skill](https://github.com/agent-connections-tools/custom
 
 ## Architecture
 
-```
-┌──────────────────┐         ┌──────────────────┐         ┌──────────────────┐
-│   WHATSAPP USER  │         │  WEBHOOK HANDLER │         │ AGENTFORCE AGENT │
-│                  │         │                  │         │                  │
-│ Sees rich media: │  Meta   │ Your lightweight  │  Agent  │ Custom Connection│
-│ • Carousels      │ Cloud   │ service:          │  API    │                  │
-│ • Buttons        │  API    │ • Receives Meta   │         │ • Reasons about  │
-│ • Lists          │ ──────► │   webhook         │ ──────► │   intent         │
-│ • Images/Video   │ ◄────── │ • Calls Agent API │ ◄────── │ • Picks format   │
-│                  │  rich   │ • Forwards reply  │  JSON   │ • Returns JSON   │
-│                  │ response│   to Meta API     │         │   matching Meta's│
-│                  │         │                   │         │   WA schemas     │
-└──────────────────┘         └──────────────────┘         └──────────────────┘
-                                                    surfaceType: "Custom"
-```
+![WhatsApp Rich Media Architecture](./whatsapp-architecture.png)
 
 ---
 
