@@ -279,12 +279,14 @@ Use these exact XML structures. Replace placeholders with the user's values.
 
 ```json
 {
-  "packageDirectories": [{ "path": "unpackaged", "default": true }],
+  "packageDirectories": [{ "path": "unpackaged", "default": true }, { "path": "force-app" }],
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "66.0"
 }
 ```
+
+Note: If MIAW handoff is NOT enabled, omit the `{ "path": "force-app" }` entry (no force-app directory exists).
 
 ## MIAW Handoff (generated only if user said yes to question 4)
 
