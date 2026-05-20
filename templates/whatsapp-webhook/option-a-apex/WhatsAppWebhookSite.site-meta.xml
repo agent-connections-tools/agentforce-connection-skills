@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Salesforce Site Configuration for WhatsApp Webhook
+
+    IMPORTANT: Salesforce Sites (or Digital Experience sites) are needed to expose
+    your Apex REST endpoint publicly so Meta can reach it.
+
+    This file provides a reference configuration. In most orgs, you will set this up
+    through Setup UI rather than deploying this XML directly. See README for instructions.
+-->
+<CustomSite xmlns="http://soap.sforce.com/2006/04/metadata">
+    <active>true</active>
+    <allowHomePage>false</allowHomePage>
+    <allowStandardAnswersPages>false</allowStandardAnswersPages>
+    <allowStandardIdeasPages>false</allowStandardIdeasPages>
+    <allowStandardLookups>false</allowStandardLookups>
+    <allowStandardSearch>false</allowStandardSearch>
+    <analyticsTrackingCode></analyticsTrackingCode>
+    <authorizationRequiredPage>Unauthorized</authorizationRequiredPage>
+    <bandwidthExceededPage>BandwidthExceeded</bandwidthExceededPage>
+    <changePasswordPage>ChangePassword</changePasswordPage>
+    <chatterAnswersForgotPasswordConfirmPage>ForgotPasswordConfirm</chatterAnswersForgotPasswordConfirmPage>
+    <chatterAnswersForgotPasswordPage>ForgotPassword</chatterAnswersForgotPasswordPage>
+    <chatterAnswersHelpPage>Help</chatterAnswersHelpPage>
+    <chatterAnswersLoginPage>Login</chatterAnswersLoginPage>
+    <chatterAnswersRegistrationPage>Register</chatterAnswersRegistrationPage>
+    <customWebAddresses>
+        <!-- Your site URL will look like: https://yourdomain.my.salesforce-sites.com -->
+    </customWebAddresses>
+    <description>Exposes the WhatsApp webhook endpoint for Meta Cloud API integration</description>
+    <favoriteIcon></favoriteIcon>
+    <fileNotFoundPage>FileNotFound</fileNotFoundPage>
+    <forgotPasswordPage>ForgotPassword</forgotPasswordPage>
+    <genericErrorPage>Exception</genericErrorPage>
+    <guestUser>WhatsApp_Webhook_Guest</guestUser>
+    <inMaintenancePage>InMaintenance</inMaintenancePage>
+    <inactiveIndexPage>InMaintenance</inactiveIndexPage>
+    <indexPage>WhatsAppWebhookLanding</indexPage>
+    <masterLabel>WhatsApp Webhook</masterLabel>
+    <myProfilePage>MyProfile</myProfilePage>
+    <portal></portal>
+    <requireHttps>true</requireHttps>
+    <requireInsecurePortalAccess>false</requireInsecurePortalAccess>
+    <robotsTxtPage></robotsTxtPage>
+    <selfRegPage></selfRegPage>
+    <serverIsDown>InMaintenance</serverIsDown>
+    <siteAdmin>admin@yourorg.com</siteAdmin>
+    <siteTemplate>SiteTemplate</siteTemplate>
+    <siteType>Visualforce</siteType>
+    <subdomain>whatsapp-webhook</subdomain>
+</CustomSite>

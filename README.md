@@ -73,6 +73,7 @@ Claude will ask you:
 2. What response formats do you need?
 3. Any special instructions for the agent?
 4. Do you need human handoff? (optional — lets your agent transfer to a live person when it can't help)
+5. Do you want a WhatsApp webhook handler? (only if you picked WhatsApp rich media in Q2)
 
 It generates a complete deploy-ready package in `output/` with a fully automated deploy script.
 
@@ -111,6 +112,7 @@ Use the value from the `DeveloperName` column. Append `_v1` to it (e.g., `Custom
 - Wires the connection to your agent
 - If MIAW handoff is enabled: wires the handoff action to your agent with escalation instructions baked in
 - Deploys the updated config
+- If WhatsApp webhook handler is enabled: generates a separate deploy script for the handler
 
 Just deactivate your agent before running (the script will remind you) and reactivate it after. No manual wiring needed — the script handles everything.
 
@@ -379,6 +381,45 @@ All you need to do:
 | "Messaging channel not found" | Confirm your MIAW deployment name matches the Custom Label value (Setup > Messaging Settings > Messaging Deployments) |
 | Summary is cut off | The system caps summaries at 4,000 characters. Longer conversations get truncated. |
 
+## WhatsApp Webhook Handler (Optional)
+
+If you pick "WhatsApp rich media" in question 2, the skill asks a follow-up: do you also want to generate the webhook handler? This is the bridge between Meta's WhatsApp Cloud API and the Agentforce Agent API.
+
+### Why you need a webhook handler
+
+Meta's WhatsApp API and the Agent API don't speak the same language. The handler translates between them — receiving messages from WhatsApp, routing them to your agent, and sending the agent's structured responses back as native WhatsApp rich media (carousels, buttons, lists, images).
+
+### Two options
+
+| Option | Where it runs | Best for |
+|--------|---------------|----------|
+| **Option A: Apex** | Inside your Salesforce org (no external hosting) | Teams that work primarily in Salesforce |
+| **Option B: Node.js** | Any cloud host (Heroku, Railway, Vercel) | High message volumes, teams that prefer JavaScript |
+
+Both options do the same thing — you just pick where you want it to run.
+
+### What gets generated
+
+The skill generates a complete, deploy-ready webhook handler with:
+- Full message translation (all 4 WhatsApp formats + plain text fallback)
+- Session management (maps phone numbers to Agent API sessions)
+- Meta webhook verification (the GET challenge Meta requires)
+- Deploy script and step-by-step README
+- Error handling with friendly user-facing messages
+
+### After deployment
+
+1. Deploy the custom connection first (`./deploy.sh`)
+2. Then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)
+3. Enter the webhook URL in Meta's dashboard (the README walks you through this)
+4. Send a test message from WhatsApp — you should see rich media responses
+
+### What you need first
+
+- A Meta Business account with WhatsApp Cloud API access
+- A WhatsApp Business phone number (Meta App Dashboard > WhatsApp > Getting Started)
+- For Option B: a cloud hosting account (Heroku, Railway, or similar)
+
 ---
 
 ## What does success look like?
@@ -430,6 +471,10 @@ You don't need to understand these files — the skill generates them and the de
 | Text Choices | Present 2-7 clickable text options |
 | Choices with Images | Product cards, listings with thumbnails |
 | Time Picker | Let users select a time slot |
+| WhatsApp Quick Reply | 1-3 tappable buttons (Meta's interactive button format) |
+| WhatsApp List | Expandable list picker with sections (4-10 options) |
+| WhatsApp Media Card | Image or video with caption text |
+| WhatsApp Carousel | Horizontal scrollable cards (2-10 cards with images + buttons) |
 | Custom JSON | Any structured output your client can parse |
 
 ## Manual Setup (without Claude Code)

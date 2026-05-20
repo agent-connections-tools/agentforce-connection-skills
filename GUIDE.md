@@ -767,6 +767,109 @@ All you do after the script finishes:
 
 ---
 
+## Step 14: WhatsApp Webhook Handler (Optional)
+
+If you chose "WhatsApp rich media" response formats in Step 1 and want WhatsApp messages to reach your agent, you need a webhook handler. This is the service that sits between Meta's WhatsApp Cloud API and the Salesforce Agent API.
+
+### What the webhook handler does
+
+1. **Receives messages** — Meta sends a POST to your handler whenever someone messages your WhatsApp Business number
+2. **Manages sessions** — Maps each phone number to an Agent API session (creates new sessions, reuses active ones)
+3. **Calls the Agent API** — Forwards the message with `surfaceType: "Custom"` so your WhatsApp response formats are active
+4. **Translates responses** — Converts the agent's structured JSON into Meta's interactive message format
+5. **Sends rich media** — POSTs the formatted message back to Meta's Send Message API
+
+### Why you can't skip the handler
+
+Meta's WhatsApp API and the Agent API are incompatible in four ways:
+
+| Gap | What Meta does | What Agent API needs |
+|-----|----------------|---------------------|
+| Verification | Sends GET challenge on registration | Has no GET handler |
+| Payload format | Deeply nested: `entry[].changes[].value.messages[]` | Flat: `{ message: { sequenceId, type, text } }` |
+| Session state | Stateless — fires a POST per message | Stateful — requires a pre-created session ID |
+| Reply delivery | Expects you to POST replies to `graph.facebook.com` | Returns response in HTTP body only |
+
+### Option A: Apex inside Salesforce
+
+Everything stays in your Salesforce org. No external hosting to manage.
+
+**How it works:**
+- An Apex REST class exposed via a Salesforce Site (public URL for Meta's webhook)
+- A custom object (`WhatsApp_Session__c`) maps phone numbers to Agent API sessions
+- Named Credentials store your Meta API token securely
+
+**Setup steps:**
+1. Deploy the webhook code: `cd output/webhook && ./deploy_webhook.sh my-org`
+2. Note the Site URL the script outputs (something like `https://yourorg.my.salesforce-sites.com/whatsapp/services/apexrest/whatsapp`)
+3. Go to [Meta App Dashboard](https://developers.facebook.com/apps/) > Your App > WhatsApp > Configuration
+4. Under "Webhook", click Edit and paste your Site URL
+5. Enter the verify token you chose during the build
+6. Subscribe to the `messages` field
+7. Send a test message from WhatsApp to your Business number
+
+**Requirements:**
+- A Salesforce Site (Setup > Sites) — the deploy script creates one
+- Named Credentials for Meta API (Setup > Named Credentials) — the README guides you through this
+- Your org must allow outbound callouts to `graph.facebook.com`
+
+### Option B: External service (Node.js)
+
+A lightweight Express app you deploy to any cloud host. About 200 lines of code.
+
+**How it works:**
+- Express server handles Meta's GET verification and POST messages
+- In-memory session map (phone number → Agent API session) with 30-minute TTL
+- OAuth client credentials flow to authenticate with Salesforce
+- Native `fetch` (Node 18+) — only dependency is Express
+
+**Setup steps:**
+1. Deploy to Heroku: `cd output/webhook && ./deploy_heroku.sh`
+   - Or deploy to Railway, Vercel, or any Node.js host (see the generated README for platform-specific instructions)
+2. Set environment variables (the deploy script prompts for these):
+   - `META_VERIFY_TOKEN` — the token you chose during the build
+   - `META_ACCESS_TOKEN` — from Meta App Dashboard > WhatsApp > API Setup
+   - `META_PHONE_NUMBER_ID` — from Meta App Dashboard > WhatsApp > Getting Started
+   - `SF_LOGIN_URL` — `https://login.salesforce.com` (or your custom domain)
+   - `SF_CLIENT_ID` — your ECA's Consumer Key
+   - `SF_CLIENT_SECRET` — your ECA's Consumer Secret
+   - `SF_AGENT_ID` — your agent's BotDefinition ID (starts with `0Xx`)
+3. Copy the app's URL (e.g., `https://your-app.herokuapp.com/webhook`)
+4. Go to [Meta App Dashboard](https://developers.facebook.com/apps/) > Your App > WhatsApp > Configuration
+5. Under "Webhook", click Edit and paste your app URL
+6. Enter the verify token
+7. Subscribe to the `messages` field
+8. Send a test message from WhatsApp
+
+**Requirements:**
+- Node.js 18+ (for native `fetch`)
+- A hosting platform (Heroku, Railway, Vercel, or any server that runs Node.js)
+- A Salesforce ECA with Client Credentials Flow enabled (same one you use for testing)
+
+### Which option to pick
+
+| If... | Choose |
+|-------|--------|
+| You want zero external infrastructure | Option A (Apex) |
+| Your team is primarily Salesforce admins/developers | Option A (Apex) |
+| You expect high message volumes (>1000/hour) | Option B (External) |
+| You already have cloud infrastructure | Option B (External) |
+| You want fastest iteration and testing | Option B (External) |
+
+### Testing the full flow
+
+After deploying both the custom connection AND the webhook handler:
+
+1. Send a message from WhatsApp to your Business number
+2. The webhook handler receives it, creates/reuses an Agent API session, and forwards to your agent
+3. The agent responds with structured JSON (carousel, buttons, list, or media)
+4. The handler translates the JSON to Meta's format and sends it back
+5. You see native WhatsApp rich media on your phone
+
+If you only see plain text: check that your custom connection deployed correctly (`/project:diagnose-connection`) and that the webhook handler is correctly setting `surfaceType: "Custom"` in the Agent API session.
+
+---
+
 ## Tips
 
 - **Keep response formats under 7 per connection** — more than that and the agent struggles to select the right one

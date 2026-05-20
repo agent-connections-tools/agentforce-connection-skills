@@ -33,6 +33,14 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
+5. **(Only if user picked "WhatsApp rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between WhatsApp and the Agent API. Two options:
+   - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce.
+   - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
+
+   If the user picks an option, ask:
+   - What is your Meta WhatsApp Business phone number ID? (Meta App Dashboard > WhatsApp > Getting Started)
+   - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
+
 **Surface ID generation:** Auto-generate the surface ID from the client name. Take the first 2-4 letters (uppercase) and append "01". Examples:
 - UniversalContainers → UC01
 - AcmePortal → ACME01
@@ -635,5 +643,66 @@ Add a "Human Handoff" section to the README:
 - MIAW handoff: The Apex class must handle bulk (list of requests) even though most calls will be single
 - WhatsApp: When user picks "WhatsApp rich media," generate ALL 4 WhatsApp formats (Quick Reply, List, Media, Carousel). Don't ask which ones — they work as a set.
 - WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Respect Meta character limits: button text 20 chars, list row title 24 chars, body text 1024 chars."
-- WhatsApp: The integration layer (ECA + webhook handler) that routes WhatsApp messages to the Agent API is the customer's responsibility. The skill generates the agent-side response formats only.
+- WhatsApp: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
+
+---
+
+## WhatsApp Webhook Handler (generated only if user said yes to question 5)
+
+When the user picks a webhook handler option, generate the handler code in `output/webhook/`.
+
+### Option A: Apex Inside Salesforce
+
+Use the templates in `templates/whatsapp-webhook/option-a-apex/` as the basis. Copy them to `output/webhook/` and replace all `{ClientName}` and `{surfaceId}` placeholders with actual values. Also replace the verify token and phone number ID in the Custom Metadata template.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── classes/
+│   ├── WhatsAppWebhook_<ClientName>.cls
+│   └── WhatsAppWebhook_<ClientName>.cls-meta.xml
+├── objects/
+│   └── WhatsApp_Session__c.object-meta.xml
+├── sites/
+│   └── WhatsAppWebhookSite.site-meta.xml
+├── deploy_webhook.sh
+└── README.md
+```
+
+The deploy script deploys the Apex class, custom object, and site config. The README walks through:
+1. Creating a Meta App and getting credentials
+2. Setting up Named Credentials in Salesforce
+3. Configuring the Salesforce Site
+4. Entering the webhook URL in Meta's dashboard
+5. Testing end-to-end
+
+### Option B: External Service (Node.js)
+
+Use the templates in `templates/whatsapp-webhook/option-b-node/` as the basis. Copy them to `output/webhook/` and replace `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── index.js
+├── package.json
+├── .env.example
+├── Procfile
+├── deploy_heroku.sh
+└── README.md
+```
+
+The README walks through:
+1. Creating a Meta App and getting credentials
+2. Getting Salesforce ECA credentials (Consumer Key + Secret)
+3. Deploying to Heroku/Railway (one command)
+4. Configuring the webhook URL in Meta's dashboard
+5. Testing end-to-end
+
+### Key rules for webhook generation
+
+- Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
+- For Option A: also generate a Custom Metadata Type record with the user's verify token and phone number ID
+- For Option B: populate the `.env.example` with the user's values as comments (never put actual secrets in committed files)
+- The response format translation function (`convertToMetaFormat` / `translateToWhatsApp`) must handle all 4 WhatsApp formats plus plain text fallback
+- After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
 
