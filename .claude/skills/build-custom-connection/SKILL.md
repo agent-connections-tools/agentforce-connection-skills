@@ -24,6 +24,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Text choices (2-7 clickable options)
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
+   - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels — pre-built to match Meta's API)
    - Custom JSON (describe the structure you want)
 3. **Any special instructions for the agent on this connection?** (e.g., "Keep responses under 160 characters", "Always use formal tone", "Never show more than 5 choices")
 4. **Do you need human handoff via MIAW?** (If the agent can't resolve an issue, should it transfer the session with full context to a human agent?) If yes, ask:
@@ -244,6 +245,66 @@ Use these exact XML structures. Replace placeholders with the user's values.
         <sortOrder>3</sortOrder>
     </instructions>
     <masterLabel>{Client Display Name} Chat Time Picker</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — WhatsApp Quick Reply Buttons
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on WhatsApp. Use this to show the user up to 3 quick-reply buttons. Each button has a short label the user can tap to respond instantly.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Main message text (max 1024 chars)","maxLength":1024},"header":{"type":"string","description":"Optional header text (max 60 chars)","maxLength":60},"footer":{"type":"string","description":"Optional footer text (max 60 chars)","maxLength":60},"buttons":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique button identifier"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20}},"required":["id","title"]},"minItems":1,"maxItems":3}},"required":["body","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}WhatsAppButtons when presenting 1 to 3 short options the user can tap to reply. Do NOT use this for more than 3 options — use {ClientName}WhatsAppList instead.</instruction>
+        <sortOrder>4</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} WhatsApp Quick Reply</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — WhatsApp List Message
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on WhatsApp. Use this to show a list picker with sections and rows. The user taps a button to expand the list and selects one option. Best for 4-10 options grouped into categories.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Main message text (max 1024 chars)","maxLength":1024},"header":{"type":"string","description":"Optional header text (max 60 chars)","maxLength":60},"footer":{"type":"string","description":"Optional footer text (max 60 chars)","maxLength":60},"buttonText":{"type":"string","description":"CTA button label that opens the list (max 20 chars)","maxLength":20},"sections":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Section heading (max 24 chars)","maxLength":24},"rows":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique row identifier"},"title":{"type":"string","description":"Row title (max 24 chars)","maxLength":24},"description":{"type":"string","description":"Optional row description (max 72 chars)","maxLength":72}},"required":["id","title"]}}},"required":["title","rows"]},"minItems":1,"maxItems":10}},"required":["body","buttonText","sections"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}WhatsAppList when presenting 4 or more options, or when options need grouping into categories. Maximum 10 rows total across all sections. Do NOT use quick reply buttons for more than 3 options.</instruction>
+        <sortOrder>5</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} WhatsApp List</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — WhatsApp Media Card
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on WhatsApp. Use this to send an image or video with a caption. Best for product photos, how-to images, or video explanations.</description>
+    <input>{"type":"object","properties":{"mediaType":{"type":"string","enum":["image","video"],"description":"Type of media to send"},"url":{"type":"string","description":"HTTPS URL to the media file (image: JPEG/PNG max 5MB, video: MP4 max 16MB)"},"caption":{"type":"string","description":"Caption text below the media (max 1024 chars)","maxLength":1024}},"required":["mediaType","url","caption"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}WhatsAppMedia when sharing a product image, screenshot, document preview, or video with the user. Always include a descriptive caption.</instruction>
+        <sortOrder>6</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} WhatsApp Media</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — WhatsApp Carousel
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on WhatsApp. Use this to show a horizontal scrollable carousel of 2-10 cards. Each card has an image, body text, and up to 2 buttons. Best for product comparisons, plan options, or browsing catalogs.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Introductory message above the carousel (max 1024 chars)","maxLength":1024},"cards":{"type":"array","items":{"type":"object","properties":{"imageUrl":{"type":"string","description":"HTTPS URL to card image (JPEG/PNG, max 5MB)"},"bodyText":{"type":"string","description":"Card body text (max 160 chars)","maxLength":160},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["quick_reply","url"],"description":"Button type"},"title":{"type":"string","description":"Button label (max 25 chars)","maxLength":25},"payload":{"type":"string","description":"Callback payload for quick_reply, or URL for url type"}},"required":["type","title","payload"]},"minItems":1,"maxItems":2}},"required":["imageUrl","bodyText","buttons"]},"minItems":2,"maxItems":10}},"required":["body","cards"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}WhatsAppCarousel when comparing multiple items side by side (products, plans, options). Minimum 2 cards, maximum 10. Each card MUST have an image. Use quick reply buttons for card-level selections.</instruction>
+        <sortOrder>7</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} WhatsApp Carousel</masterLabel>
 </AiResponseFormat>
 ```
 
@@ -572,4 +633,7 @@ Add a "Human Handoff" section to the README:
 - MIAW handoff: Do NOT hardcode org-specific values. Use Custom Labels for deployment name and queue name.
 - MIAW handoff: Truncate conversation summary to 4000 characters max (field limit)
 - MIAW handoff: The Apex class must handle bulk (list of requests) even though most calls will be single
+- WhatsApp: When user picks "WhatsApp rich media," generate ALL 4 WhatsApp formats (Quick Reply, List, Media, Carousel). Don't ask which ones — they work as a set.
+- WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Respect Meta character limits: button text 20 chars, list row title 24 chars, body text 1024 chars."
+- WhatsApp: The integration layer (ECA + webhook handler) that routes WhatsApp messages to the Agent API is the customer's responsibility. The skill generates the agent-side response formats only.
 
