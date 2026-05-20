@@ -682,6 +682,87 @@ This is the "measure twice, cut once" moment for the one destructive action.
 
 ---
 
+## Step 13: Add Human Handoff via MIAW (Optional)
+
+If your agent needs to transfer conversations to a live human when it can't resolve an issue, the build skill can generate a complete handoff solution using **Messaging for In-App and Web (MIAW)**.
+
+### What "human handoff" means
+
+When a customer asks something your AI agent can't handle — a complex billing dispute, a frustrated customer demanding a manager, or a question outside the agent's knowledge — the agent transfers the conversation to a human. The human gets the full context: who the customer is, what they asked, and a summary of everything discussed so far. The customer sees a smooth transition, not a cold transfer.
+
+### What you need in your org first
+
+Before the skill can deploy handoff, you need three things set up in Salesforce:
+
+1. **Messaging for In-App and Web** — This is the channel human agents use to chat with customers.
+   - Where to check: Setup > Messaging Settings. Look for an active deployment.
+   - If you don't have one: Setup > Messaging Settings > New Deployment. Follow the wizard.
+
+2. **A Messaging Deployment name** — This is the specific deployment the handoff connects to.
+   - Where to find it: Setup > Messaging Settings > Messaging Deployments. Copy the exact developer name.
+
+3. **An Omni-Channel queue** — This is the team that receives handoff sessions.
+   - Where to check: Setup > Queues. Look for your support team's queue (e.g., `Tier2_Support`).
+   - If you don't have one: Setup > Queues > New. Create a queue and assign agents to it.
+
+### How the skill sets it up
+
+When you answer "yes" to question 4 during the build, the skill generates:
+
+| What | Purpose | Plain-English explanation |
+|------|---------|--------------------------|
+| **Apex class** (`MIAWHandoff_<YourClient>.cls`) | Creates the handoff session and passes context | This is the code that does the actual transfer. It creates a new messaging session, attaches the conversation history, and routes it to your human team. |
+| **Flow** (`<YourClient>_Escalate_To_MIAW.flow`) | Triggers the handoff from the agent | This connects the "escalate" action in your agent to the handoff code. Think of it as the wiring between "agent decides to escalate" and "handoff actually happens." |
+| **Custom Label** (`MIAW_Deployment_<YourClient>`) | Stores your deployment name | Instead of hardcoding your specific deployment name in the code (which would break if you rename it), this stores it as a setting you can change later without touching code. |
+
+### What context the human agent sees
+
+When the handoff completes, the human agent's console shows:
+
+```
+HANDOFF CONTEXT
+Customer: Jane Smith
+Email: jane@example.com
+Reason: Customer requesting refund for order #12345, agent unable to process
+
+Conversation Summary:
+Customer asked about return policy for a laptop purchased 45 days ago.
+Agent explained the 30-day return window has passed. Customer requested
+exception due to manufacturing defect. Agent cannot authorize exceptions
+beyond policy — escalating to specialist.
+```
+
+### After deployment — wiring the handoff to your agent
+
+The deploy script handles the code deployment. You still need to tell your agent when to use it:
+
+1. **Open Agent Builder** — Setup > Agents > select your agent
+2. **Find or create an escalation topic** — this is the topic that handles "I can't help you with this"
+3. **Add the action** — In the topic's actions, add "Hand Off to Human Agent via MIAW"
+4. **Add the instruction** — In the topic's instructions, add: "When you cannot resolve the issue after two attempts, or when the customer explicitly asks for a human, use the MIAW handoff action."
+5. **Activate your agent** — the handoff won't work until the agent is active
+
+### Testing the handoff
+
+1. Start a conversation with your agent (via Agent API with `"surfaceType": "Custom"`)
+2. Ask something outside the agent's knowledge or say "I want to talk to a human"
+3. The agent should respond: "Connecting you to a specialist now. They'll have the full context of our conversation."
+4. Check Omni-Channel — a new session should appear in the queue you configured
+5. Accept the session as a human agent — verify you see the conversation context
+
+### Troubleshooting handoff
+
+| Problem | What's happening | How to fix |
+|---------|-----------------|------------|
+| "Queue not found" error | The queue name in your Custom Label doesn't match any queue in the org | Setup > Queues — copy the exact developer name. Then update the Custom Label: Setup > Custom Labels > `MIAW_Deployment_<YourClient>` |
+| Handoff never triggers | The agent doesn't know when to escalate | Add a clear instruction to your escalation topic: "Use the MIAW handoff action when..." |
+| Session appears but no one picks it up | Omni-Channel routing isn't configured for the queue | Setup > Omni-Channel > Routing Configuration — make sure the queue has a routing config with agents assigned and capacity available |
+| "Messaging channel not found" | The deployment name in your Custom Label doesn't match | Setup > Messaging Settings > Messaging Deployments — copy the exact developer name and update the Custom Label |
+| Summary is cut off | The conversation was longer than 4,000 characters | This is expected. Summaries are truncated at 4,000 chars (a platform field limit). The most recent context is preserved. |
+| Handoff works in sandbox but not production | The Custom Label values are environment-specific | Custom Labels need to be set independently in each org. Check that production has the right deployment name and queue name in its Custom Labels. |
+
+---
+
 ## Tips
 
 - **Keep response formats under 7 per connection** — more than that and the agent struggles to select the right one
@@ -689,3 +770,4 @@ This is the "measure twice, cut once" moment for the one destructive action.
 - **Instructions are soft guidance** — The agent uses natural language reasoning to select formats. There's no strict enforcement. Build your client to handle unexpected output gracefully.
 - **Start simple** — Begin with 1-2 response formats. Add more once you've validated the agent selects correctly.
 - **Use description and instructions together** — `description` on AiResponseFormat tells the agent WHEN to use this format. `instructions` tell it HOW to use it.
+- **Human handoff is optional** — Not every agent needs it. If your agent handles only informational queries (product info, status checks), skip MIAW. Add it later when you need escalation.

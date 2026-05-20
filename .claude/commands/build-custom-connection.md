@@ -15,6 +15,11 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Time picker (select a time slot)
    - Custom JSON (describe the structure you want)
 3. **Any special instructions for the agent on this connection?** (e.g., "Keep responses under 160 characters", "Always use formal tone", "Never show more than 5 choices")
+4. **Do you need human handoff via MIAW?** (If the agent can't resolve an issue, should it transfer the session with full context to a human agent?) If yes, ask:
+   - What is your MIAW deployment name? (Setup > Messaging Settings > Messaging Deployments)
+   - What context to pass: customer name, email, conversation transcript, case number, escalation reason?
+   - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
+   - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
 **Surface ID generation:** Auto-generate the surface ID from the client name. Take the first 2-4 letters (uppercase) and append "01". Examples:
 - UniversalContainers → UC01
@@ -35,6 +40,12 @@ output/
 │   │   └── (one .aiResponseFormat file per format)
 │   └── aiSurfaces/
 │       └── <ClientName>_<surfaceId>.aiSurface
+├── force-app/main/default/          ← (only if MIAW handoff enabled)
+│   ├── classes/
+│   │   ├── MIAWHandoff_<ClientName>.cls
+│   │   └── MIAWHandoff_<ClientName>.cls-meta.xml
+│   └── flows/
+│       └── <ClientName>_Escalate_To_MIAW.flow-meta.xml
 ├── sfdx-project.json
 ├── deploy.sh
 └── README.md
@@ -301,6 +312,180 @@ Use these exact XML structures. Replace placeholders with the user's values.
 }
 ```
 
+## MIAW Handoff (generated only if user said yes to question 4)
+
+### Apex Class: MIAWHandoff_<ClientName>.cls
+
+Generate an Apex class that:
+
+1. Is annotated with `@InvocableMethod` (callable from agent escalation action)
+2. Accepts these inputs via an inner `HandoffRequest` class with `@InvocableVariable`:
+   - `conversationId` (String, required) — Agent API session ID
+   - `customerName` (String, required)
+   - `customerEmail` (String)
+   - `escalationReason` (String, required)
+   - `conversationSummary` (String) — truncated to 4000 chars max
+   - `routingTarget` (String, required) — Omni-Channel queue/skill name
+   - Any custom fields the user specified
+3. Returns a `HandoffResult` inner class with:
+   - `messagingSessionId` (String)
+   - `confirmationMessage` (String)
+   - `success` (Boolean)
+4. Implementation:
+   - Creates a MessagingSession record linked to the user's MIAW deployment
+   - Populates pre-chat fields from input variables
+   - Stores conversation context (summary or transcript) in the session
+   - Routes to the specified Omni-Channel queue/skill
+   - Returns confirmation: "Connecting you to a specialist now. They'll have the full context of our conversation."
+5. Error handling: if session creation fails, return `success=false` with message "I'm having trouble connecting you to a specialist. Please try again or contact us directly."
+
+Use this template:
+
+```apex
+public class MIAWHandoff_{ClientName} {
+
+    public class HandoffRequest {
+        @InvocableVariable(required=true label='Conversation ID')
+        public String conversationId;
+
+        @InvocableVariable(required=true label='Customer Name')
+        public String customerName;
+
+        @InvocableVariable(label='Customer Email')
+        public String customerEmail;
+
+        @InvocableVariable(required=true label='Escalation Reason')
+        public String escalationReason;
+
+        @InvocableVariable(label='Conversation Summary')
+        public String conversationSummary;
+
+        @InvocableVariable(required=true label='Routing Target')
+        public String routingTarget;
+    }
+
+    public class HandoffResult {
+        @InvocableVariable
+        public String messagingSessionId;
+
+        @InvocableVariable
+        public String confirmationMessage;
+
+        @InvocableVariable
+        public Boolean success;
+    }
+
+    @InvocableMethod(label='Hand Off to Human Agent via MIAW'
+                     description='Transfers the current Agentforce session to a human agent through Messaging for In-App and Web, passing full conversation context.')
+    public static List<HandoffResult> executeHandoff(List<HandoffRequest> requests) {
+        List<HandoffResult> results = new List<HandoffResult>();
+        for (HandoffRequest req : requests) {
+            HandoffResult result = new HandoffResult();
+            try {
+                // Get the messaging channel
+                MessagingChannel channel = [
+                    SELECT Id FROM MessagingChannel
+                    WHERE DeveloperName = :Label.MIAW_Deployment_{ClientName}
+                    LIMIT 1
+                ];
+
+                // Create messaging session with pre-chat context
+                MessagingSession session = new MessagingSession(
+                    MessagingChannelId = channel.Id,
+                    Status = 'New'
+                );
+                insert session;
+
+                // Store conversation context
+                ConversationEntry entry = new ConversationEntry(
+                    ConversationId = session.ConversationId,
+                    EntryType = 'Text',
+                    Message = 'HANDOFF CONTEXT\n'
+                        + 'Customer: ' + req.customerName + '\n'
+                        + 'Email: ' + (req.customerEmail != null ? req.customerEmail : 'N/A') + '\n'
+                        + 'Reason: ' + req.escalationReason + '\n\n'
+                        + 'Conversation Summary:\n'
+                        + (req.conversationSummary != null
+                            ? req.conversationSummary.left(4000)
+                            : 'No summary available')
+                );
+                insert entry;
+
+                // Route to queue
+                Group queue = [
+                    SELECT Id FROM Group
+                    WHERE Type = 'Queue' AND DeveloperName = :req.routingTarget
+                    LIMIT 1
+                ];
+                session.OwnerId = queue.Id;
+                update session;
+
+                result.messagingSessionId = session.Id;
+                result.confirmationMessage = 'Connecting you to a specialist now. They\'ll have the full context of our conversation.';
+                result.success = true;
+            } catch (Exception e) {
+                result.success = false;
+                result.confirmationMessage = 'I\'m having trouble connecting you to a specialist. Please try again or contact us directly.';
+            }
+            results.add(result);
+        }
+        return results;
+    }
+}
+```
+
+### Apex meta.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexClass xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>62.0</apiVersion>
+    <status>Active</status>
+</ApexClass>
+```
+
+### Flow: <ClientName>_Escalate_To_MIAW
+
+Generate an autolaunched Flow that:
+1. Receives input variables: conversationId, customerName, customerEmail, escalationReason, conversationSummary
+2. Sets the routingTarget from a constant (the queue name the user specified)
+3. Calls the MIAWHandoff_{ClientName} invocable action
+4. Returns the confirmationMessage to the caller
+
+### Deploy script addition
+
+When MIAW handoff is enabled, add this block to deploy.sh AFTER Stage 1:
+
+```bash
+echo "=== Deploying MIAW Handoff Action ==="
+sf project deploy start --source-dir force-app --target-org "$ORG" --wait 10
+
+echo ""
+echo "MIAW Handoff deployed. Post-deployment steps:"
+echo "  1. Verify Messaging for Web is active: Setup > Messaging Settings"
+echo "  2. Add 'Hand Off to Human Agent via MIAW' action to your agent's escalation subagent"
+echo "  3. Add instruction: 'When you cannot resolve the issue, use the MIAW handoff action.'"
+echo "  4. Verify Omni-Channel routing: Setup > Omni-Channel > Routing Configuration"
+```
+
+### Custom Labels (generated alongside)
+
+Generate a Custom Label for the MIAW deployment name so it's not hardcoded:
+- Label name: `MIAW_Deployment_{ClientName}`
+- Value: the deployment name the user provided
+- Category: `Agentforce`
+
+### README addition
+
+Add a "Human Handoff" section to the README:
+- What it does (transfers session context to human via MIAW)
+- How the agent triggers it (escalation instruction + action)
+- What context the human agent sees
+- How to test (trigger an escalation, verify Omni-Channel receives the session)
+- Troubleshooting: queue not found, messaging channel not active, conversation summary too long
+
+---
+
 ## Important rules
 
 - ALWAYS use `--metadata-dir` for deployment, never `--manifest` (these metadata types aren't in the CLI registry)
@@ -312,3 +497,6 @@ Use these exact XML structures. Replace placeholders with the user's values.
 - Auto-generate the surface ID from the client name (first 3-4 uppercase letters + "01") — don't ask the user for it
 - Run the deploy script immediately after generating files (user has pre-approved this)
 - If the user provides a custom JSON schema for a response format, validate it's proper JSON before writing it into the XML
+- MIAW handoff: Do NOT hardcode org-specific values. Use Custom Labels for deployment name and queue name.
+- MIAW handoff: Truncate conversation summary to 4000 characters max (field limit)
+- MIAW handoff: The Apex class must handle bulk (list of requests) even though most calls will be single

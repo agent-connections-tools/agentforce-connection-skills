@@ -1,12 +1,12 @@
 # Custom Connections Skills for Agentforce
 
-Four Claude Code skills that take the pain out of working with Custom Connections in Agentforce — one to **build** them, one to **diagnose** them when something's wrong, one to **update** them after the first deploy, and one to **test** them end-to-end.
+Four Claude Code skills that take the pain out of working with Custom Connections in Agentforce — one to **build** them, one to **diagnose** them when something's wrong, one to **update** them after the first deploy, and one to **test** them end-to-end. The build skill also supports optional **human handoff via MIAW** (Messaging for In-App and Web) — so your agent can transfer conversations to a live person when it can't resolve an issue.
 
 ## The four skills
 
 | Skill | What it does | When to use |
 |------|------|------|
-| **`/project:build-custom-connection`** | Generates all the metadata for a new custom connection. Answer 3 questions, get a deploy-ready package. | First time setting up a custom connection |
+| **`/project:build-custom-connection`** | Generates all the metadata for a new custom connection. Answer 4 questions, get a deploy-ready package. Optionally adds human handoff via MIAW. | First time setting up a custom connection |
 | **`/project:diagnose-connection`** | Checks an existing connection for problems and tells you exactly what's wrong in plain English. Read-only — never changes anything in your org. | When something isn't working and you want to know why |
 | **`/project:update-connection`** | Adds a new response format (Time Picker, Image Cards, etc.) to an existing connection without rebuilding from scratch. Pulls your current state, shows you what's there, and merges in the change. | When you want to add a format to a connection you've already deployed |
 | **`/project:test-connection`** | Sends a real message through the connection via the Agent API and shows you what came back. Walks you through External Client App setup if you don't have one. | When you want to confirm the connection actually works at runtime, not just in metadata |
@@ -72,6 +72,7 @@ Claude will ask you:
 1. What is your client called?
 2. What response formats do you need?
 3. Any special instructions for the agent?
+4. Do you need human handoff? (optional — lets your agent transfer to a live person when it can't help)
 
 It generates a complete deploy-ready package in `output/` with a fully automated deploy script.
 
@@ -333,6 +334,46 @@ After each response, the skill asks "Want to send another message, or are you do
 ### Don't have an External Client App?
 
 The skill walks you through setup. Six steps in the Salesforce Setup UI — no command-line work, no XML editing. Takes about 10 minutes the first time, never again. Just answer "no" to question 4 above and follow along.
+
+## Human Handoff (Optional)
+
+If you answer "yes" to question 4 during the build, the skill also generates everything needed for your agent to transfer a conversation to a live person when it can't resolve an issue.
+
+### What it does
+
+When a customer asks something your agent can't handle (complex complaint, sensitive issue, frustrated customer), the agent hands off the entire conversation — including a summary and customer details — to a human agent in Omni-Channel. The customer sees: "Connecting you to a specialist now. They'll have the full context of our conversation."
+
+### What gets generated
+
+| File | Purpose |
+|------|---------|
+| `MIAWHandoff_<YourClient>.cls` | The code that creates the handoff session and passes context to the human agent |
+| `<YourClient>_Escalate_To_MIAW.flow` | A Flow that triggers the handoff action |
+| Custom Label | Stores your MIAW deployment name (so nothing is hardcoded) |
+
+### What you need in your org first
+
+1. **Messaging for In-App and Web** active — Setup > Messaging Settings
+2. **A Messaging Deployment** — this is the channel your customers reach humans through
+3. **An Omni-Channel queue** — the team that will receive handoffs (e.g., `Tier2_Support`)
+
+### After deployment
+
+1. Go to your agent in Agent Builder
+2. Add the "Hand Off to Human Agent via MIAW" action to your agent's escalation topic
+3. Add this instruction to the escalation topic: "When you cannot resolve the issue, use the MIAW handoff action."
+4. Test by triggering an escalation and confirming the session appears in Omni-Channel
+
+### Troubleshooting handoff
+
+| Problem | Fix |
+|---------|-----|
+| "Queue not found" error | Check that the queue developer name in your Custom Label matches exactly (Setup > Queues) |
+| Handoff doesn't route | Verify Omni-Channel is enabled and the queue has agents assigned (Setup > Omni-Channel > Routing Configuration) |
+| "Messaging channel not found" | Confirm your MIAW deployment name matches the Custom Label value (Setup > Messaging Settings > Messaging Deployments) |
+| Summary is cut off | The system caps summaries at 4,000 characters. Longer conversations get truncated. |
+
+---
 
 ## What does success look like?
 
