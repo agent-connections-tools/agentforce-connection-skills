@@ -140,19 +140,7 @@ const health = await fetch("/api/health");
 
 Every implementation should track conversation state. This prevents double-sends and gives users feedback.
 
-```
-         send()
-  IDLE ────────► SENDING
-   ▲                │
-   │                ▼
-   │           RECEIVED
-   │                │
-   │   (render)     │
-   └────────────────┘
-
-  Any state can transition to ERROR.
-  ERROR shows a retry button that re-enters SENDING.
-```
+![Chat State Machine](./chat-state-machine.png)
 
 Minimal implementation:
 
