@@ -204,31 +204,4 @@ For a production deployment handling real customer traffic:
 
 ## How It Works (Architecture)
 
-```
-WhatsApp User
-     │
-     ▼
-Meta Cloud API ──POST──▶ Node.js Express App (/webhook)
-                                  │
-                        ┌─────────┴──────────┐
-                        ▼                    ▼
-                 Session Lookup        Salesforce OAuth
-                (in-memory Map)      (Client Credentials)
-                        │                    │
-                        └─────────┬──────────┘
-                                  ▼
-                         Agent API Call
-                    (POST /sessions/:id/messages)
-                                  │
-                                  ▼
-                       translateToWhatsApp()
-                    (convert response formats)
-                                  │
-                                  ▼
-                       POST to Meta Send API
-                     (graph.facebook.com/v18.0)
-                                  │
-                                  ▼
-                         WhatsApp User sees
-                           rich response
-```
+![WhatsApp + Node webhook architecture](./architecture.png)

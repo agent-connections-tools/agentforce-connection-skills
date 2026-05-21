@@ -199,34 +199,7 @@ https://yourorg.my.salesforce-sites.com/services/apexrest/teams
 
 ## How It Works (Architecture)
 
-```
-Teams User
-     │
-     ▼
-Bot Framework ──POST──▶ Salesforce Site ──▶ Apex REST Class
-(Activity object)                                  │
-                                         ┌─────────┴─────────┐
-                                         ▼                   ▼
-                                  Token Validation    Session Lookup
-                                  (JWT claims check)  (Teams_Session__c)
-                                         │                   │
-                                         └─────────┬─────────┘
-                                                   ▼
-                                            Agent API Call
-                                           (Named Credential)
-                                                   │
-                                                   ▼
-                                         Convert Response Format
-                                        (Adaptive Cards / Hero Cards)
-                                                   │
-                                                   ▼
-                                         POST reply to serviceUrl
-                                        (Bot Framework Connector)
-                                                   │
-                                                   ▼
-                                           Teams User sees
-                                           rich response
-```
+![Teams + Apex webhook architecture](./architecture.png)
 
 ---
 

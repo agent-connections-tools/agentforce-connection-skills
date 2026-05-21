@@ -161,30 +161,7 @@ https://yourorg.my.salesforce-sites.com/services/apexrest/whatsapp/{ClientName}/
 
 ## How It Works (Architecture)
 
-```
-WhatsApp User
-     │
-     ▼
-Meta Cloud API ──POST──▶ Salesforce Site ──▶ Apex REST Class
-                                                    │
-                                          ┌─────────┴─────────┐
-                                          ▼                   ▼
-                                   Session Lookup      Agent API Call
-                                  (WhatsApp_Session__c)  (Named Cred)
-                                          │                   │
-                                          └─────────┬─────────┘
-                                                    ▼
-                                          Convert Response Format
-                                         (convertToMetaFormat)
-                                                    │
-                                                    ▼
-                                          POST to Meta Send API
-                                           (Named Credential)
-                                                    │
-                                                    ▼
-                                            WhatsApp User sees
-                                            rich response
-```
+![WhatsApp + Apex webhook architecture](./architecture.png)
 
 ---
 
