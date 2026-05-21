@@ -93,11 +93,16 @@ app.post('/api/messages', async (req, res) => {
     } catch (error) {
         if (error.name === 'TokenValidationError') {
             console.warn('[Auth] Token validation failed:', error.message);
-            return res.status(401).json({ error: 'Unauthorized' });
+            if (!res.headersSent) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+            return;
         }
 
         console.error('[Error] Processing message:', error.message);
-        res.status(200).json({}); // Still return 200 to prevent retries
+        if (!res.headersSent) {
+            res.status(200).json({}); // Still return 200 to prevent retries
+        }
 
         // Attempt to send a friendly error message back to Teams
         try {
