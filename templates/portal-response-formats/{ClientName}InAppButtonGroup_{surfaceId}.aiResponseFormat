@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} in-app portal. Use this to display 1-6 action buttons below a message. Best for confirm/cancel prompts, navigation options, or quick reply choices.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Message text displayed above the buttons (max 300 chars)","maxLength":300},"buttons":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique button identifier"},"label":{"type":"string","description":"Button label (max 30 chars)","maxLength":30},"style":{"type":"string","enum":["primary","secondary","danger"],"description":"Visual style: primary (filled), secondary (outlined), danger (red)"},"action":{"type":"string","enum":["reply","link","submit"],"description":"reply sends text back, link opens URL, submit posts action"},"value":{"type":"string","description":"Message text for reply, URL for link, or action key for submit"}},"required":["id","label","action","value"]},"minItems":1,"maxItems":6}},"required":["body","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InAppButtonGroup when presenting 1 to 6 short action choices the user can click. Use primary style for the recommended action, danger for destructive actions (delete, cancel). Do NOT use this for more than 6 options — use {ClientName}InAppList instead. Do NOT use this when options need descriptions — use {ClientName}InAppList.</instruction>
+        <sortOrder>3</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} In-App Button Group</masterLabel>
+</AiResponseFormat>

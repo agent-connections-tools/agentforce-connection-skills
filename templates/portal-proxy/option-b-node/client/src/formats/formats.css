@@ -1,0 +1,326 @@
+/* ─── Shared button styles ────────────────────────────────────────────────── */
+.format-btn {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: #fff;
+  color: #333;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.format-btn:hover { background: #f5f5f5; border-color: #bbb; }
+.format-btn:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }
+
+.format-btn--primary { background: #0066ff; color: #fff; border-color: #0066ff; }
+.format-btn--primary:hover { background: #0052cc; }
+
+.format-btn--secondary { background: #fff; color: #333; }
+
+.format-btn--danger { background: #fff; color: #cc0000; border-color: #cc0000; }
+.format-btn--danger:hover { background: #fff3f3; }
+
+.format-btn--small { padding: 6px 12px; font-size: 12px; }
+
+/* ─── Text (plain) ───────────────────────────────────────────────────────── */
+.format-text {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+/* ─── InAppCard ──────────────────────────────────────────────────────────── */
+.format-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.format-card__image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.format-card__content {
+  padding: 14px 16px;
+}
+
+.format-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.format-card__body {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.format-card__actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  flex-wrap: wrap;
+}
+
+/* ─── InAppList ──────────────────────────────────────────────────────────── */
+.format-list {
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.format-list__title {
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 16px 8px;
+}
+
+.format-list__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.format-list__item--clickable {
+  cursor: pointer;
+}
+
+.format-list__item--clickable:hover {
+  background: #f8f8f8;
+}
+
+.format-list__item--clickable:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: -2px;
+}
+
+.format-list__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.format-list__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.format-list__item-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.format-list__item-subtitle {
+  font-size: 12px;
+  color: #777;
+}
+
+/* ─── InAppButtonGroup ───────────────────────────────────────────────────── */
+.format-btngroup__body {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.format-btngroup__buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ─── InAppForm ──────────────────────────────────────────────────────────── */
+.format-form {
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fff;
+}
+
+.format-form__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.format-form__desc {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 14px;
+}
+
+.format-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.format-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.format-form__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.format-form__required {
+  color: #cc0000;
+}
+
+.format-form__input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.format-form__input:focus {
+  border-color: #0066ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
+}
+
+.format-form__input[aria-invalid="true"] {
+  border-color: #cc0000;
+}
+
+.format-form__checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.format-form__error {
+  font-size: 12px;
+  color: #cc0000;
+}
+
+.format-form__actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ─── InAppCarousel ──────────────────────────────────────────────────────── */
+.format-carousel {
+  width: 100%;
+}
+
+.format-carousel__title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.format-carousel__wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.format-carousel__track {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+
+.format-carousel__track::-webkit-scrollbar {
+  display: none;
+}
+
+.format-carousel__card {
+  flex-shrink: 0;
+  width: 240px;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+}
+
+.format-carousel__img-wrapper {
+  position: relative;
+}
+
+.format-carousel__image {
+  width: 100%;
+  height: 135px;
+  object-fit: cover;
+}
+
+.format-carousel__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.format-carousel__card-content {
+  padding: 10px 12px;
+  flex: 1;
+}
+
+.format-carousel__card-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.format-carousel__card-desc {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.format-carousel__card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 12px;
+}
+
+.format-carousel__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border: 1px solid #ddd;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.format-carousel__nav--left { left: -14px; }
+.format-carousel__nav--right { right: -14px; }
+.format-carousel__nav:hover { background: #f5f5f5; }
+.format-carousel__nav:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }

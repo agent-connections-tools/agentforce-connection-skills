@@ -15,6 +15,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Time picker (select a time slot)
    - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels — pre-built to match Meta's API)
    - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
+   - In-app portal / custom UI (cards, lists, button groups, forms, carousels — for embedding an agent in your own web app or Experience Cloud site)
    - Custom JSON (describe the structure you want)
 3. **Any special instructions for the agent on this connection?** (e.g., "Keep responses under 160 characters", "Always use formal tone", "Never show more than 5 choices")
 4. **Do you need human handoff via MIAW?** (If the agent can't resolve an issue, should it transfer the session with full context to a human agent?) If yes, ask:
@@ -23,8 +24,8 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
-5. **(Only if user picked "WhatsApp rich media" or "Microsoft Teams rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between the messaging channel and the Agent API. Two options:
-   - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce.
+5. **(Only if user picked "WhatsApp rich media", "Microsoft Teams rich media", or "In-app portal / custom UI" in Q2) Do you want me to generate the webhook/proxy handler too?** This is the bridge between the channel/app and the Agent API. Two options:
+   - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce or uses Experience Cloud.
    - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
 
    If the user picks an option, ask the channel-specific questions:
@@ -36,6 +37,10 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    **For Teams:**
    - What is your Microsoft App ID? (Azure Portal > Bot resource > Configuration)
    - What is your Microsoft App Password? (Azure Portal > App registrations > Certificates & secrets)
+
+   **For In-app portal:**
+   - **Option A (Apex + LWC):** No additional questions — auth inherits from Salesforce Identity.
+   - **Option B (Node + React):** Which IdP will authenticate your portal users? (Auth0, Okta, or Salesforce Identity) — determines the reference auth middleware generated.
 
 **Surface ID generation:** Auto-generate the surface ID from the client name. Take the first 2-4 letters (uppercase) and append "01". Examples:
 - UniversalContainers → UC01
@@ -844,6 +849,106 @@ The README walks through:
 
 ---
 
+## In-App Portal Proxy (generated only if user picked portal and said yes to question 5)
+
+When the user picks a portal proxy option, generate the proxy code in `output/portal/`.
+
+### Option A: Apex + LWC (Experience Cloud)
+
+Use the templates in `templates/portal-proxy/option-a-apex/` as the basis. Copy them to `output/portal/` and replace all `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/portal/`:
+```
+portal/
+├── classes/
+│   ├── PortalAgentProxy_{ClientName}.cls
+│   └── PortalAgentProxy_{ClientName}.cls-meta.xml
+├── lwc/
+│   ├── portalChat_{ClientName}/
+│   │   ├── portalChat_{ClientName}.html
+│   │   ├── portalChat_{ClientName}.js
+│   │   ├── portalChat_{ClientName}.css
+│   │   └── portalChat_{ClientName}.js-meta.xml
+│   └── portalFormatRenderer_{ClientName}/
+│       ├── portalFormatRenderer_{ClientName}.html
+│       ├── portalFormatRenderer_{ClientName}.js
+│       └── portalFormatRenderer_{ClientName}.js-meta.xml
+├── deploy_portal.sh
+└── README.md
+```
+
+Key implementation details:
+- Apex proxy uses **Continuation** (async callout pattern) — required because agent responses take 5-15s
+- LWC component shows loading state while Continuation is in progress
+- Auth inherits from Salesforce Identity session — no additional auth middleware needed
+- Format renderer handles all 5 portal formats + plain text fallback
+- Includes SLDS styling for visual consistency with Experience Cloud
+
+The README walks through:
+1. Deploying the Apex proxy + LWC components
+2. Adding the LWC component to an Experience Cloud page via Experience Builder
+3. Testing end-to-end (send message, verify rich format rendering)
+
+### Option B: Node.js + React
+
+Use the templates in `templates/portal-proxy/option-b-node/` as the basis. Copy them to `output/portal/` and replace `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/portal/`:
+```
+portal/
+├── server/
+│   ├── index.js
+│   ├── auth-middleware.js
+│   ├── package.json
+│   ├── .env.example
+│   └── Procfile
+├── client/
+│   ├── src/
+│   │   ├── App.tsx
+│   │   ├── Chat.tsx
+│   │   ├── FormatRenderer.tsx
+│   │   └── formats/
+│   │       ├── InAppCard.tsx
+│   │       ├── InAppList.tsx
+│   │       ├── InAppButtonGroup.tsx
+│   │       ├── InAppForm.tsx
+│   │       └── InAppCarousel.tsx
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── deploy_heroku.sh
+└── README.md
+```
+
+Key implementation details:
+- Server holds ECA secrets server-side — never exposed to browser
+- Auth middleware validates end-user JWT against configured IdP (Auth0/Okta/SF Identity)
+- Session management maps authenticated user → Agent API session ID
+- `ALLOW_ANONYMOUS=true` env var for local dev only — defaults to auth-required
+- CSP configured to block `*.salesforce.com` from browser origins
+- React components ship with keyboard nav + ARIA labels (WCAG 2.1 AA)
+- Error/fallback states: proxy unreachable, agent timeout, unknown format, session expired, rate limited
+
+The README walks through:
+1. Getting Salesforce ECA credentials (Consumer Key + Secret)
+2. Configuring IdP (Auth0/Okta JWKS URL + issuer)
+3. Setting env vars
+4. Running locally (`npm run dev` — starts both server + client)
+5. Deploying to production (Heroku/Railway/AWS)
+6. Testing end-to-end
+
+### Key rules for portal proxy generation
+
+- Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
+- For Option A: Apex proxy MUST use Continuation pattern (not synchronous callout) — agent responses take 5-15s and will hit governor limits otherwise
+- For Option A: LWC Continuation methods must NOT be `cacheable=true`
+- For Option B: auth middleware is NOT optional in production — `ALLOW_ANONYMOUS=true` is for local dev only
+- For Option B: populate `.env.example` with descriptive comments for each var (never put actual secrets)
+- The format renderer must handle all 5 portal formats (InAppCard, InAppList, InAppButtonGroup, InAppForm, InAppCarousel) plus plain text fallback
+- After generating, tell the user: "I've generated the portal proxy. Deploy the connection first (`./deploy.sh`), then deploy the portal (`./portal/deploy_portal.sh` or `./portal/deploy_heroku.sh`)."
+
+---
+
 ## Important rules
 
 - ALWAYS use `--metadata-dir` for deployment, never `--manifest` (these metadata types aren't in the CLI registry)
@@ -864,3 +969,8 @@ The README walks through:
 - Teams: When user picks "Microsoft Teams rich media," generate ALL 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel). Don't ask which ones — they work as a set.
 - Teams: Add these surface instructions: "Use Teams buttons for 1-6 options. Use Teams choice set for 7+ options or when options need labels. Use Teams hero card when sharing a single product or visual. Use Teams carousel for product comparisons. Button labels max 40 chars."
 - Teams: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
+- Portal: When user picks "In-app portal / custom UI," generate ALL 5 portal formats (InAppCard, InAppList, InAppButtonGroup, InAppForm, InAppCarousel). Don't ask which ones — they work as a set.
+- Portal: Use the templates in `templates/portal-response-formats/` as the basis for all 5 formats + the AiSurface.
+- Portal: The AiSurface includes 4 surface instructions: (1) use plain text for simple answers, (2) never use more than one format per reply, (3) format selection guidance (Card for single items, List for multiple, ButtonGroup for quick choices, Form for data collection, Carousel for visual comparisons), (4) keep text concise — app context means scannable, not paragraphs.
+- Portal: If user picks a proxy handler option, generate the proxy from templates. If they skip Q5, don't generate the proxy — they'll build it themselves.
+- Portal: InAppForm supports only text, email, number, select, and checkbox field types. No date pickers, file upload, multi-select, or conditional fields.

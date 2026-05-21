@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} in-app portal. Use this to display a single bordered card with a title, body text, optional image, and up to 4 action buttons. Best for showing a single item like an order status, knowledge article, or product detail.</description>
+    <input>{"type":"object","properties":{"title":{"type":"string","description":"Card title (max 80 chars)","maxLength":80},"body":{"type":"string","description":"Card body text (max 500 chars)","maxLength":500},"imageUrl":{"type":"string","description":"Optional HTTPS URL to card image"},"buttons":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique button identifier"},"label":{"type":"string","description":"Button label (max 30 chars)","maxLength":30},"action":{"type":"string","enum":["link","reply","submit"],"description":"link opens URL, reply sends text back, submit posts form data"},"value":{"type":"string","description":"URL for link, message text for reply, or action key for submit"}},"required":["id","label","action","value"]},"maxItems":4}},"required":["title","body"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InAppCard when presenting a single item with details the user might act on (order status, case summary, product detail, article). Always include a title and body. Add buttons only when there are clear next actions. Do NOT use this for multiple items — use {ClientName}InAppList or {ClientName}InAppCarousel instead.</instruction>
+        <sortOrder>1</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} In-App Card</masterLabel>
+</AiResponseFormat>
