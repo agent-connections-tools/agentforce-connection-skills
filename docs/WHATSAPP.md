@@ -14,6 +14,94 @@ The [Custom Connections skill](https://github.com/agent-connections-tools/custom
 
 ---
 
+## Getting Started (End-to-End)
+
+Follow these steps in order. No prior Custom Connections experience required.
+
+### What you need before you start
+
+- A Salesforce org with an Agentforce agent already created (at least one topic configured)
+- The Salesforce CLI (`sf`) installed on your machine
+- A Claude Code environment with the [custom-connections-skill](https://github.com/agent-connections-tools/custom-connections-skill) repo cloned
+- A Meta Business account with WhatsApp Cloud API access (you'll need a test phone number)
+- A publicly accessible server to host the webhook handler (Heroku, Railway, AWS, or similar)
+
+### Step 1: Generate the Custom Connection metadata
+
+1. Open Claude Code in the cloned repo
+2. Run `/project:build-custom-connection`
+3. When prompted for channel, pick **"WhatsApp rich media"**
+4. Answer the remaining questions (client name, org URL, agent ID)
+5. When asked about the webhook handler, say **yes** to generate it
+
+The skill generates all response format files, the AiSurface definition, and optionally the webhook handler code in an `unpackaged/` folder.
+
+### Step 2: Deploy metadata to your org
+
+```bash
+sf project deploy start --source-dir unpackaged/ --target-org your-org-alias
+```
+
+This deploys the 4 WhatsApp response formats and the AiSurface (Custom Connection definition) to your org.
+
+### Step 3: Wire the Custom Connection to your agent
+
+1. Go to **Setup > Agents** in your org
+2. Open your agent
+3. Add the Custom Connection you just deployed (it will appear by name)
+4. Save
+
+Your agent now knows it can respond with carousels, quick replies, lists, and media cards on WhatsApp.
+
+### Step 4: Create the External Client App (ECA)
+
+This gives the webhook handler server-to-server access to the Agent API.
+
+1. Go to **Setup > External Client Apps > New External Client App**
+2. Name it (e.g., "WhatsApp Webhook Bridge"), set Distribution State to "Local"
+3. Enable OAuth with scopes: `api`, `chatbot_api`, `sfap_api`
+4. Check "Allow client_credentials flow"
+5. Set "Run as" to a dedicated Integration User (not your personal account)
+6. Generate the consumer key and secret — save both securely
+
+Do NOT add `refresh_token` to the scopes. It breaks client_credentials.
+
+### Step 5: Set up the webhook handler
+
+1. Deploy the generated webhook handler code to your hosting platform
+2. Set environment variables:
+   ```
+   SF_CONSUMER_KEY=<ECA consumer key>
+   SF_CONSUMER_SECRET=<ECA consumer secret>
+   SF_DOMAIN=https://yourorg.my.salesforce.com
+   SF_AGENT_ID=<your agent ID>
+   META_VERIFY_TOKEN=<a random string you choose>
+   META_WHATSAPP_TOKEN=<from Meta Cloud API dashboard>
+   ```
+3. Note your webhook's public URL (e.g., `https://your-app.railway.app/webhook`)
+
+### Step 6: Configure Meta's webhook
+
+1. Go to [developers.facebook.com](https://developers.facebook.com) > your app > WhatsApp > Configuration
+2. Set the **Callback URL** to your webhook's public URL (e.g., `https://your-app.railway.app/webhook`)
+3. Set the **Verify token** to the same value you used for `META_VERIFY_TOKEN`
+4. Click "Verify and Save" — Meta will send a GET request to your webhook; it must respond correctly
+5. Subscribe to the `messages` webhook field
+
+### Step 7: Test it end-to-end
+
+1. Open WhatsApp on your phone
+2. Send a message to your test number — for example:
+   - "Show me your products" (should return a carousel)
+   - "What are my options?" (should return quick reply buttons)
+   - "Which store is closest?" (should return a list message)
+3. Verify the response renders as native WhatsApp rich media, not plain text
+4. Tap a button or select a list item to confirm interactions work
+
+If you see plain text instead of a format, check that the AiSurface is wired to the agent (Step 3) and that the webhook is passing `surfaceType: "Custom"` in the session config.
+
+---
+
 ## Architecture
 
 ![WhatsApp Rich Media Architecture](./whatsapp-architecture.png)

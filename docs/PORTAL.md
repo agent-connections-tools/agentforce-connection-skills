@@ -16,6 +16,101 @@ The [Custom Connections skill](https://github.com/agent-connections-tools/custom
 
 ---
 
+## Getting Started (End-to-End)
+
+Follow these steps in order. No prior Custom Connections experience required.
+
+### What you need before you start
+
+- A Salesforce org with an Agentforce agent already created (at least one topic configured)
+- The Salesforce CLI (`sf`) installed on your machine
+- A Claude Code environment with the [custom-connections-skill](https://github.com/agent-connections-tools/custom-connections-skill) repo cloned
+- For Option B (Node + React): An identity provider account (Auth0, Okta, or Salesforce Identity) and Node.js 18+
+
+### Step 1: Generate the Custom Connection metadata
+
+1. Open Claude Code in the cloned repo
+2. Run `/project:build-custom-connection`
+3. When prompted for channel, pick **"In-app portal / custom UI"**
+4. Answer the remaining questions (client name, org URL, agent ID)
+5. When asked about the proxy, pick your option:
+   - **Apex + LWC** if you're deploying to Experience Cloud
+   - **Node + React** if you have a custom frontend
+   - **Both** if you want to evaluate both paths
+
+The skill generates all response format files, the AiSurface definition, and the proxy/frontend code in an `unpackaged/` folder ready for deploy.
+
+### Step 2: Deploy metadata to your org
+
+```bash
+sf project deploy start --source-dir unpackaged/ --target-org your-org-alias
+```
+
+This deploys the 5 response formats and the AiSurface (Custom Connection definition) to your org.
+
+### Step 3: Wire the Custom Connection to your agent
+
+1. Go to **Setup > Agents** in your org
+2. Open your agent
+3. Add the Custom Connection you just deployed (it will appear by name, e.g., "AcmePortalSurface")
+4. Save
+
+Your agent now knows it can respond with cards, lists, button groups, forms, and carousels.
+
+### Step 4: Create the External Client App (ECA)
+
+This gives the proxy server-to-server access to the Agent API.
+
+1. Go to **Setup > External Client Apps > New External Client App**
+2. Name it (e.g., "Portal Agent Proxy"), set Distribution State to "Local"
+3. Enable OAuth with scopes: `api`, `chatbot_api`, `sfap_api`
+4. Check "Allow client_credentials flow"
+5. Set "Run as" to a dedicated Integration User (not your personal account)
+6. Generate the consumer key and secret — save both securely
+
+Do NOT add `refresh_token` to the scopes. It breaks client_credentials.
+
+### Step 5: Set up and run the proxy
+
+**If you chose Option A (Apex + LWC):**
+
+1. Create a Named Credential pointing to your org's Agent API URL using the ECA credentials
+2. Allocate Platform Cache (Setup > Platform Cache > at least 1MB)
+3. Deploy the Apex class and LWC components from the generated `option-a-apex/` folder
+4. Add the LWC component to your Experience Cloud page
+
+**If you chose Option B (Node + React):**
+
+1. Set environment variables in the proxy server:
+   ```
+   SF_LOGIN_URL=https://yourorg.my.salesforce.com
+   SF_CLIENT_ID=<ECA consumer key>
+   SF_CLIENT_SECRET=<ECA consumer secret>
+   SF_AGENT_ID=<your agent ID>
+   AUTH_JWKS_URI=<your IdP's JWKS URL>
+   AUTH_ISSUER=<your IdP's issuer URL>
+   AUTH_AUDIENCE=<your API audience>
+   ```
+2. Run `npm install && npm start` in the `server/` folder
+3. Run `npm install && npm run dev` in the `client/` folder
+4. Open the React app in your browser
+
+For local testing, you can set `ALLOW_ANONYMOUS=true` on the proxy to skip JWT validation. Remove this before going to production.
+
+### Step 6: Test it end-to-end
+
+1. Open the chat interface (Experience Cloud page or React app)
+2. Type a message that should trigger a rich format — for example:
+   - "Show me my open cases" (should return an InAppList)
+   - "Compare your pricing plans" (should return an InAppCarousel)
+   - "I'd like to schedule a callback" (should return an InAppForm)
+3. Verify the response renders as a rich component, not plain text
+4. Click a button or submit a form to confirm interactions work
+
+If you see plain text instead of a format, check that the AiSurface is wired to the agent (Step 3) and that the proxy is passing `surfaceType: "Custom"` in the session config.
+
+---
+
 ## Architecture
 
 ![In-App Portal Architecture](./portal-architecture.png)
