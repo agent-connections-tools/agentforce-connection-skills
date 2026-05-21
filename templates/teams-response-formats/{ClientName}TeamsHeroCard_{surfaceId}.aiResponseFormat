@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to send a Hero Card with a large image, title, subtitle, text, and optional buttons. Best for showcasing a single product, article, or visual with a detailed description.</description>
+    <input>{"type":"object","properties":{"title":{"type":"string","description":"Card title (max 80 chars)","maxLength":80},"subtitle":{"type":"string","description":"Optional subtitle (max 80 chars)","maxLength":80},"text":{"type":"string","description":"Body text (max 500 chars, supports markdown subset)","maxLength":500},"imageUrl":{"type":"string","description":"HTTPS URL to image (renders at full width)"},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["openUrl","messageBack"],"description":"Button action type"},"title":{"type":"string","description":"Button label (max 40 chars)","maxLength":40},"value":{"type":"string","description":"URL for openUrl or message text for messageBack"}},"required":["type","title","value"]},"maxItems":6}},"required":["title","text","imageUrl"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsHeroCard when sharing a single product, article, or visual with a detailed description. Always include an image when available. Use openUrl buttons for external links and messageBack for actions that continue the conversation.</instruction>
+        <sortOrder>3</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Hero Card</masterLabel>
+</AiResponseFormat>

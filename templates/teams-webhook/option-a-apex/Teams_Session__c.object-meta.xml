@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Teams Session</label>
+    <pluralLabel>Teams Sessions</pluralLabel>
+    <nameField>
+        <label>Session Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>TMS-{0000000}</displayFormat>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <description>Maps Microsoft Teams conversation IDs to Agentforce Agent API session IDs.</description>
+    <fields>
+        <fullName>Conversation_Id__c</fullName>
+        <label>Conversation ID</label>
+        <type>Text</type>
+        <length>255</length>
+        <required>true</required>
+        <unique>true</unique>
+        <externalId>true</externalId>
+        <description>Teams conversation ID from Bot Framework Activity</description>
+    </fields>
+    <fields>
+        <fullName>Agent_Session_Id__c</fullName>
+        <label>Agent Session ID</label>
+        <type>Text</type>
+        <length>255</length>
+        <required>true</required>
+        <externalId>false</externalId>
+        <description>Session ID from the Agentforce Agent API</description>
+    </fields>
+    <fields>
+        <fullName>Last_Sequence_Id__c</fullName>
+        <label>Last Sequence ID</label>
+        <type>Number</type>
+        <precision>10</precision>
+        <scale>0</scale>
+        <required>true</required>
+        <defaultValue>1</defaultValue>
+        <description>Message sequence counter for the Agent API</description>
+    </fields>
+    <fields>
+        <fullName>Last_Activity__c</fullName>
+        <label>Last Activity</label>
+        <type>DateTime</type>
+        <required>true</required>
+        <description>Timestamp of last message in this session</description>
+    </fields>
+    <fields>
+        <fullName>User_Name__c</fullName>
+        <label>User Name</label>
+        <type>Text</type>
+        <length>255</length>
+        <required>false</required>
+        <externalId>false</externalId>
+        <description>Display name of the Teams user</description>
+    </fields>
+    <fields>
+        <fullName>User_Email__c</fullName>
+        <label>User Email</label>
+        <type>Text</type>
+        <length>255</length>
+        <required>false</required>
+        <externalId>false</externalId>
+        <description>Email or Azure AD ID of the Teams user</description>
+    </fields>
+</CustomObject>

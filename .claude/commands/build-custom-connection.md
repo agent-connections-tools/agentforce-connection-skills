@@ -14,6 +14,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
    - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels — pre-built to match Meta's API)
+   - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
    - Custom JSON (describe the structure you want)
 3. **Any special instructions for the agent on this connection?** (e.g., "Keep responses under 160 characters", "Always use formal tone", "Never show more than 5 choices")
 4. **Do you need human handoff via MIAW?** (If the agent can't resolve an issue, should it transfer the session with full context to a human agent?) If yes, ask:
@@ -22,13 +23,19 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
-5. **(Only if user picked "WhatsApp rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between WhatsApp and the Agent API. Two options:
+5. **(Only if user picked "WhatsApp rich media" or "Microsoft Teams rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between the messaging channel and the Agent API. Two options:
    - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce.
    - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
 
-   If the user picks an option, ask:
+   If the user picks an option, ask the channel-specific questions:
+
+   **For WhatsApp:**
    - What is your Meta WhatsApp Business phone number ID? (Meta App Dashboard > WhatsApp > Getting Started)
    - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
+
+   **For Teams:**
+   - What is your Microsoft App ID? (Azure Portal > Bot resource > Configuration)
+   - What is your Microsoft App Password? (Azure Portal > App registrations > Certificates & secrets)
 
 **Surface ID generation:** Auto-generate the surface ID from the client name. Take the first 2-4 letters (uppercase) and append "01". Examples:
 - UniversalContainers → UC01
@@ -339,6 +346,66 @@ Use these exact XML structures. Replace placeholders with the user's values.
         <sortOrder>7</sortOrder>
     </instructions>
     <masterLabel>{Client Display Name} WhatsApp Carousel</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Teams Buttons
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to show the user up to 6 Action.Submit buttons rendered as an Adaptive Card. Each button has a short label the user can click to respond instantly.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Main message text displayed above the buttons"},"buttons":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique button identifier"},"title":{"type":"string","description":"Button label (max 40 chars)","maxLength":40},"style":{"type":"string","enum":["default","positive"],"description":"Optional button style"}},"required":["id","title"]},"minItems":1,"maxItems":6}},"required":["body","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsButtons when presenting 1 to 6 short options the user can click to reply. Do NOT use this for more than 6 options — use {ClientName}TeamsChoiceSet instead.</instruction>
+        <sortOrder>1</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Buttons</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Teams Choice Set
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to show a dropdown or expandable list of options rendered as an Adaptive Card with Input.ChoiceSet. Best for 4+ options or when options need descriptive labels.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Introductory message text displayed above the choice set"},"label":{"type":"string","description":"Label text above the choice set (max 50 chars)","maxLength":50},"choices":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Choice display text (max 50 chars)","maxLength":50},"value":{"type":"string","description":"Unique identifier for this choice"}},"required":["title","value"]},"minItems":2,"maxItems":20},"isMultiSelect":{"type":"boolean","description":"Whether the user can select multiple choices (default false)","default":false},"style":{"type":"string","enum":["compact","expanded"],"description":"compact renders as dropdown, expanded renders as radio buttons"}},"required":["body","label","choices","style"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsChoiceSet when presenting 4 or more options or when options need descriptive labels. Use expanded style for up to 7 choices, compact (dropdown) for more. Do NOT use TeamsButtons for more than 6 options.</instruction>
+        <sortOrder>2</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Choice Set</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Teams Hero Card
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to send a Hero Card with a large image, title, subtitle, text, and optional buttons. Best for showcasing a single product, article, or visual with a detailed description.</description>
+    <input>{"type":"object","properties":{"title":{"type":"string","description":"Card title (max 80 chars)","maxLength":80},"subtitle":{"type":"string","description":"Optional subtitle (max 80 chars)","maxLength":80},"text":{"type":"string","description":"Body text (max 500 chars, supports markdown subset)","maxLength":500},"imageUrl":{"type":"string","description":"HTTPS URL to image (renders at full width)"},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["openUrl","messageBack"],"description":"Button action type"},"title":{"type":"string","description":"Button label (max 40 chars)","maxLength":40},"value":{"type":"string","description":"URL for openUrl or message text for messageBack"}},"required":["type","title","value"]},"maxItems":6}},"required":["title","text","imageUrl"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsHeroCard when sharing a single product, article, or visual with a detailed description. Always include an image when available. Use openUrl buttons for external links and messageBack for actions that continue the conversation.</instruction>
+        <sortOrder>3</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Hero Card</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Teams Carousel
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to show a carousel of 2-10 Adaptive Cards. Each card has an image, title, optional subtitle and text, and up to 3 buttons. Best for product comparisons, plan options, or browsing catalogs.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Introductory message above the carousel (max 500 chars)","maxLength":500},"cards":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Card title (max 80 chars)","maxLength":80},"subtitle":{"type":"string","description":"Optional subtitle (max 80 chars)","maxLength":80},"imageUrl":{"type":"string","description":"HTTPS URL to card image"},"text":{"type":"string","description":"Optional body text (max 200 chars)","maxLength":200},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["openUrl","messageBack"],"description":"Button action type"},"title":{"type":"string","description":"Button label (max 40 chars)","maxLength":40},"value":{"type":"string","description":"URL for openUrl or message text for messageBack"}},"required":["type","title","value"]},"minItems":1,"maxItems":3}},"required":["title","imageUrl","buttons"]},"minItems":2,"maxItems":10}},"required":["body","cards"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsCarousel when comparing multiple items side by side (products, plans, options). Minimum 2 cards, maximum 10. Each card MUST have an image and at least one button. Use openUrl buttons for external links and messageBack for actions that continue the conversation.</instruction>
+        <sortOrder>4</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Carousel</masterLabel>
 </AiResponseFormat>
 ```
 
@@ -714,6 +781,69 @@ The README walks through:
 
 ---
 
+## Microsoft Teams Webhook Handler (generated only if user picked Teams and said yes to question 5)
+
+When the user picks a Teams webhook handler option, generate the handler code in `output/webhook/`.
+
+### Option A: Apex Inside Salesforce
+
+Use the templates in `templates/teams-webhook/option-a-apex/` as the basis. Copy them to `output/webhook/` and replace all `{ClientName}` and `{surfaceId}` placeholders with actual values.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── classes/
+│   ├── TeamsWebhook_<ClientName>.cls
+│   └── TeamsWebhook_<ClientName>.cls-meta.xml
+├── objects/
+│   └── Teams_Session__c.object-meta.xml
+├── deploy_webhook.sh
+└── README.md
+```
+
+The deploy script deploys the Apex class, custom object, and Remote Site Settings. The README walks through:
+1. Creating an Azure Bot resource
+2. Getting Microsoft App ID and Password
+3. Setting up Named Credentials in Salesforce
+4. Configuring the Salesforce Site
+5. Setting the messaging endpoint in Azure Bot config
+6. Installing the bot in Teams
+7. Testing end-to-end
+
+### Option B: External Service (Node.js)
+
+Use the templates in `templates/teams-webhook/option-b-node/` as the basis. Copy them to `output/webhook/` and replace `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── index.js
+├── package.json
+├── .env.example
+├── Procfile
+├── deploy_heroku.sh
+└── README.md
+```
+
+The README walks through:
+1. Creating an Azure Bot resource and getting App ID/Password
+2. Getting Salesforce ECA credentials (Consumer Key + Secret)
+3. Deploying to Heroku/Railway (one command)
+4. Setting the messaging endpoint in Azure Bot config
+5. Installing the bot in Teams
+6. Testing end-to-end
+
+### Key rules for Teams webhook generation
+
+- Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
+- For Option A: set up Named Credentials for both Microsoft (Bot Framework token endpoint) and Salesforce (Agent API)
+- For Option B: populate the `.env.example` with the user's Microsoft App ID as a comment (never put the App Password in committed files)
+- The response format translation function must handle all 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel) plus plain text fallback
+- Teams replies use Adaptive Card attachments: `{ type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", content: {...} }] }`
+- After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
+
+---
+
 ## Important rules
 
 - ALWAYS use `--metadata-dir` for deployment, never `--manifest` (these metadata types aren't in the CLI registry)
@@ -731,3 +861,6 @@ The README walks through:
 - WhatsApp: When user picks "WhatsApp rich media," generate ALL 4 WhatsApp formats (Quick Reply, List, Media, Carousel). Don't ask which ones — they work as a set.
 - WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Respect Meta character limits: button text 20 chars, list row title 24 chars, body text 1024 chars."
 - WhatsApp: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
+- Teams: When user picks "Microsoft Teams rich media," generate ALL 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel). Don't ask which ones — they work as a set.
+- Teams: Add these surface instructions: "Use Teams buttons for 1-6 options. Use Teams choice set for 7+ options or when options need labels. Use Teams hero card when sharing a single product or visual. Use Teams carousel for product comparisons. Button labels max 40 chars."
+- Teams: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.

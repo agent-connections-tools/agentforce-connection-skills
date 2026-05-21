@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to show the user up to 6 Action.Submit buttons rendered as an Adaptive Card. Each button has a short label the user can click to respond instantly.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Main message text displayed above the buttons"},"buttons":{"type":"array","items":{"type":"object","properties":{"id":{"type":"string","description":"Unique button identifier"},"title":{"type":"string","description":"Button label (max 40 chars)","maxLength":40},"style":{"type":"string","enum":["default","positive"],"description":"Optional button style"}},"required":["id","title"]},"minItems":1,"maxItems":6}},"required":["body","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsButtons when presenting 1 to 6 short options the user can click to reply. Do NOT use this for more than 6 options — use {ClientName}TeamsChoiceSet instead.</instruction>
+        <sortOrder>1</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Buttons</masterLabel>
+</AiResponseFormat>

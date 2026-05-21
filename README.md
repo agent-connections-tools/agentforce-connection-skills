@@ -385,6 +385,10 @@ All you need to do:
 
 For a full solution guide covering architecture, ECA authentication, security, and the end-to-end flow, see **[docs/WHATSAPP.md](./docs/WHATSAPP.md)**.
 
+## Microsoft Teams Rich Media
+
+For a full solution guide covering Azure Bot registration, Adaptive Cards, JWT authentication, and the end-to-end flow, see **[docs/TEAMS.md](./docs/TEAMS.md)**.
+
 ## WhatsApp Webhook Handler (Optional)
 
 If you pick "WhatsApp rich media" in question 2, the skill asks a follow-up: do you also want to generate the webhook handler? This is the bridge between Meta's WhatsApp Cloud API and the Agentforce Agent API.
@@ -479,6 +483,10 @@ You don't need to understand these files — the skill generates them and the de
 | WhatsApp List | Expandable list picker with sections (4-10 options) |
 | WhatsApp Media Card | Image or video with caption text |
 | WhatsApp Carousel | Horizontal scrollable cards (2-10 cards with images + buttons) |
+| Teams Buttons | Adaptive Card with 1-6 Action.Submit buttons |
+| Teams Choice Set | Dropdown or radio list (2-20 options with labels) |
+| Teams Hero Card | Large image with title, subtitle, text, and buttons |
+| Teams Carousel | 2-10 Adaptive Cards displayed as a carousel |
 | Custom JSON | Any structured output your client can parse |
 
 ## Manual Setup (without Claude Code)

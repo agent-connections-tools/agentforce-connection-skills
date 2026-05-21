@@ -25,6 +25,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
    - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels — pre-built to match Meta's API)
+   - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
    - Custom JSON (describe the structure you want)
 3. **Any special instructions for the agent on this connection?** (e.g., "Keep responses under 160 characters", "Always use formal tone", "Never show more than 5 choices")
 4. **Do you need human handoff via MIAW?** (If the agent can't resolve an issue, should it transfer the session with full context to a human agent?) If yes, ask:
@@ -33,13 +34,19 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
-5. **(Only if user picked "WhatsApp rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between WhatsApp and the Agent API. Two options:
+5. **(Only if user picked "WhatsApp rich media" or "Microsoft Teams rich media" in Q2) Do you want me to generate the webhook handler too?** This is the bridge between the messaging channel and the Agent API. Two options:
    - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce.
    - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
 
-   If the user picks an option, ask:
+   If the user picks an option, ask the channel-specific questions:
+
+   **For WhatsApp:**
    - What is your Meta WhatsApp Business phone number ID? (Meta App Dashboard > WhatsApp > Getting Started)
    - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
+
+   **For Teams:**
+   - What is your Microsoft App ID? (Azure Portal > Bot resource > Configuration)
+   - What is your Microsoft App Password? (Azure Portal > App registrations > Certificates & secrets)
 
 **Surface ID generation:** Auto-generate the surface ID from the client name. Take the first 2-4 letters (uppercase) and append "01". Examples:
 - UniversalContainers → UC01
@@ -644,6 +651,9 @@ Add a "Human Handoff" section to the README:
 - WhatsApp: When user picks "WhatsApp rich media," generate ALL 4 WhatsApp formats (Quick Reply, List, Media, Carousel). Don't ask which ones — they work as a set.
 - WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Respect Meta character limits: button text 20 chars, list row title 24 chars, body text 1024 chars."
 - WhatsApp: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
+- Teams: When user picks "Microsoft Teams rich media," generate ALL 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel). Don't ask which ones — they work as a set.
+- Teams: Add these surface instructions: "Use Teams buttons for 1-6 options. Use Teams choice set for 7+ options or when options need labels. Use Teams hero card when sharing a single product or visual. Use Teams carousel for product comparisons. Button labels max 40 chars."
+- Teams: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
 
 ---
 
@@ -704,5 +714,68 @@ The README walks through:
 - For Option A: also generate a Custom Metadata Type record with the user's verify token and phone number ID
 - For Option B: populate the `.env.example` with the user's values as comments (never put actual secrets in committed files)
 - The response format translation function (`convertToMetaFormat` / `translateToWhatsApp`) must handle all 4 WhatsApp formats plus plain text fallback
+- After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
+
+---
+
+## Microsoft Teams Webhook Handler (generated only if user picked Teams and said yes to question 5)
+
+When the user picks a Teams webhook handler option, generate the handler code in `output/webhook/`.
+
+### Option A: Apex Inside Salesforce
+
+Use the templates in `templates/teams-webhook/option-a-apex/` as the basis. Copy them to `output/webhook/` and replace all `{ClientName}` and `{surfaceId}` placeholders with actual values.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── classes/
+│   ├── TeamsWebhook_<ClientName>.cls
+│   └── TeamsWebhook_<ClientName>.cls-meta.xml
+├── objects/
+│   └── Teams_Session__c.object-meta.xml
+├── deploy_webhook.sh
+└── README.md
+```
+
+The deploy script deploys the Apex class, custom object, and Remote Site Settings. The README walks through:
+1. Creating an Azure Bot resource
+2. Getting Microsoft App ID and Password
+3. Setting up Named Credentials in Salesforce
+4. Configuring the Salesforce Site
+5. Setting the messaging endpoint in Azure Bot config
+6. Installing the bot in Teams
+7. Testing end-to-end
+
+### Option B: External Service (Node.js)
+
+Use the templates in `templates/teams-webhook/option-b-node/` as the basis. Copy them to `output/webhook/` and replace `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── index.js
+├── package.json
+├── .env.example
+├── Procfile
+├── deploy_heroku.sh
+└── README.md
+```
+
+The README walks through:
+1. Creating an Azure Bot resource and getting App ID/Password
+2. Getting Salesforce ECA credentials (Consumer Key + Secret)
+3. Deploying to Heroku/Railway (one command)
+4. Setting the messaging endpoint in Azure Bot config
+5. Installing the bot in Teams
+6. Testing end-to-end
+
+### Key rules for Teams webhook generation
+
+- Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
+- For Option A: set up Named Credentials for both Microsoft (Bot Framework token endpoint) and Salesforce (Agent API)
+- For Option B: populate the `.env.example` with the user's Microsoft App ID as a comment (never put the App Password in committed files)
+- The response format translation function must handle all 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel) plus plain text fallback
+- Teams replies use Adaptive Card attachments: `{ type: "message", attachments: [{ contentType: "application/vnd.microsoft.card.adaptive", content: {...} }] }`
 - After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
 

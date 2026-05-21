@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Microsoft Teams. Use this to show a dropdown or expandable list of options rendered as an Adaptive Card with Input.ChoiceSet. Best for 4+ options or when options need descriptive labels.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Introductory message text displayed above the choice set"},"label":{"type":"string","description":"Label text above the choice set (max 50 chars)","maxLength":50},"choices":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Choice display text (max 50 chars)","maxLength":50},"value":{"type":"string","description":"Unique identifier for this choice"}},"required":["title","value"]},"minItems":2,"maxItems":20},"isMultiSelect":{"type":"boolean","description":"Whether the user can select multiple choices (default false)","default":false},"style":{"type":"string","enum":["compact","expanded"],"description":"compact renders as dropdown, expanded renders as radio buttons"}},"required":["body","label","choices","style"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}TeamsChoiceSet when presenting 4 or more options or when options need descriptive labels. Use expanded style for up to 7 choices, compact (dropdown) for more. Do NOT use TeamsButtons for more than 6 options.</instruction>
+        <sortOrder>2</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Teams Choice Set</masterLabel>
+</AiResponseFormat>

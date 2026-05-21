@@ -1,0 +1,21 @@
+{
+  "name": "teams-webhook-{clientname}",
+  "version": "1.0.0",
+  "description": "Microsoft Teams webhook handler for {ClientName} — bridges Bot Framework to Agentforce Agent API",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0"
+  },
+  "keywords": ["teams", "agentforce", "webhook", "salesforce", "bot-framework"],
+  "license": "UNLICENSED",
+  "private": true
+}
