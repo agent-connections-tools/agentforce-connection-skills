@@ -389,6 +389,10 @@ For a full solution guide covering architecture, ECA authentication, security, a
 
 For a full solution guide covering Azure Bot registration, Adaptive Cards, JWT authentication, and the end-to-end flow, see **[docs/TEAMS.md](./docs/TEAMS.md)**.
 
+## In-App Portal / Custom UI
+
+For a full solution guide covering proxy architecture, end-user authentication (Auth0/Okta/SF Identity), Experience Cloud LWC setup, and the end-to-end flow, see **[docs/PORTAL.md](./docs/PORTAL.md)**.
+
 ## WhatsApp Webhook Handler (Optional)
 
 If you pick "WhatsApp rich media" in question 2, the skill asks a follow-up: do you also want to generate the webhook handler? This is the bridge between Meta's WhatsApp Cloud API and the Agentforce Agent API.
