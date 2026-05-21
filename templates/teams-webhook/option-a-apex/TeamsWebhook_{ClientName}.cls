@@ -299,7 +299,7 @@ global with sharing class TeamsWebhook_{ClientName} {
                 'streamingCapabilities' => new Map<String, Object>{
                     'chunkTypes' => new List<String>{ 'Text' }
                 },
-                'bypassUser' => false
+                'bypassUser' => true
             };
             req.setBody(JSON.serialize(body));
 

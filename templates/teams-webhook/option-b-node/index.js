@@ -232,7 +232,7 @@ async function getOrCreateSession(conversationId) {
                 streamingCapabilities: {
                     chunkTypes: ['Text'],
                 },
-                bypassUser: false,
+                bypassUser: true,
             }),
         }
     );

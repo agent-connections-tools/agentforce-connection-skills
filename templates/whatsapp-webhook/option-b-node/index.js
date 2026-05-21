@@ -194,7 +194,7 @@ async function getOrCreateSession(phoneNumber) {
                 streamingCapabilities: {
                     chunkTypes: ['Text'],
                 },
-                bypassUser: false,
+                bypassUser: true,
             }),
         }
     );
