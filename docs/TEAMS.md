@@ -230,7 +230,9 @@ The agent automatically selects the format based on context:
 
 ### Can the same agent serve both WhatsApp AND Teams?
 
-**Yes.** You configure different Custom Connections for each channel (one with Meta's WhatsApp schemas, one with Teams card schemas), but they can be attached to the same agent. The webhook handler for each channel calls the Agent API with the appropriate `surfaceType: "Custom"` configuration. The agent's reasoning, CRM access, and business logic stay identical.
+**Yes — starting in Summer '26.** Multiple Custom Connections on a single agent ships in the Summer '26 release. Once available, you configure different Custom Connections for each channel (one with Meta's WhatsApp schemas, one with Teams card schemas) attached to the same agent. The webhook handler for each channel calls the Agent API with the appropriate `surfaceType: "Custom"` configuration. The agent's reasoning, CRM access, and business logic stay identical.
+
+Until Summer '26, use one agent per channel, each with its own Custom Connection.
 
 ### What about Teams proactive messages?
 
