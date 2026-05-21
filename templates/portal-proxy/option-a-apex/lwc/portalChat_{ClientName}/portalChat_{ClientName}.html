@@ -1,0 +1,63 @@
+<template>
+    <div class="chat-container">
+        <div class="chat-header">
+            <span class="chat-title">{ClientName} Assistant</span>
+            <button class="chat-reset" onclick={handleReset} title="Start new conversation">
+                <lightning-icon icon-name="utility:refresh" size="x-small" alternative-text="Reset"></lightning-icon>
+            </button>
+        </div>
+
+        <div class="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
+            <template for:each={messages} for:item="msg">
+                <div key={msg.id} class={msg.role}>
+                    <template if:true={msg.role === 'user'}>
+                        <div class="bubble bubble-user">{msg.content}</div>
+                    </template>
+                    <template if:true={msg.role === 'agent'}>
+                        <div class="bubble bubble-agent">
+                            <c-portal-format-renderer-_{ClientName}
+                                responses={msg.content}
+                                onbuttonaction={handleButtonAction}
+                                onformsubmit={handleFormSubmit}>
+                            </c-portal-format-renderer-_{ClientName}>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <template if:true={isLoading}>
+                <div class="agent">
+                    <div class="bubble bubble-agent loading" aria-label="Agent is thinking">
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                        <span class="dot"></span>
+                    </div>
+                </div>
+            </template>
+
+            <template if:true={errorMessage}>
+                <div class="error-banner" role="alert">{errorMessage}</div>
+            </template>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea
+                class="chat-input"
+                value={inputValue}
+                onchange={handleInputChange}
+                onkeydown={handleKeyDown}
+                placeholder="Type a message..."
+                rows="1"
+                disabled={isLoading}
+                aria-label="Message input">
+            </textarea>
+            <button
+                class="chat-send"
+                onclick={sendMessage}
+                disabled={isSendDisabled}
+                aria-label="Send message">
+                Send
+            </button>
+        </div>
+    </div>
+</template>

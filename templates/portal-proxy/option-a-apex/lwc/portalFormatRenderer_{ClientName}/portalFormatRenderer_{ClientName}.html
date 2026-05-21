@@ -1,0 +1,196 @@
+<template>
+    <template for:each={processedResponses} for:item="resp">
+        <div key={resp.key} class="format-response">
+
+            <!-- Plain Text -->
+            <template if:true={resp.isText}>
+                <p class="format-text">{resp.data.content}</p>
+            </template>
+
+            <!-- InAppCard -->
+            <template if:true={resp.isCard}>
+                <div class="format-card" role="article">
+                    <template if:true={resp.data.imageUrl}>
+                        <img class="card-image" src={resp.data.imageUrl} alt="">
+                    </template>
+                    <div class="card-content">
+                        <template if:true={resp.data.title}>
+                            <h3 class="card-title">{resp.data.title}</h3>
+                        </template>
+                        <template if:true={resp.data.body}>
+                            <p class="card-body">{resp.data.body}</p>
+                        </template>
+                    </div>
+                    <template if:true={resp.data.buttons}>
+                        <div class="card-actions">
+                            <template for:each={resp.data.buttons} for:item="btn">
+                                <lightning-button
+                                    key={btn.id}
+                                    label={btn.label}
+                                    data-action={btn.action}
+                                    data-value={btn.value}
+                                    onclick={handleButtonClick}
+                                    variant="neutral">
+                                </lightning-button>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- InAppList -->
+            <template if:true={resp.isList}>
+                <div class="format-list" role="list">
+                    <template if:true={resp.data.title}>
+                        <h3 class="list-title">{resp.data.title}</h3>
+                    </template>
+                    <template for:each={resp.data.items} for:item="item">
+                        <div key={item.id}
+                             class="list-item"
+                             role="listitem"
+                             data-action-type={item.action.type}
+                             data-action-value={item.action.value}
+                             onclick={handleListItemClick}>
+                            <template if:true={item.iconUrl}>
+                                <img class="list-icon" src={item.iconUrl} alt="">
+                            </template>
+                            <div class="list-text">
+                                <span class="list-item-title">{item.title}</span>
+                                <template if:true={item.subtitle}>
+                                    <span class="list-item-subtitle">{item.subtitle}</span>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- InAppButtonGroup -->
+            <template if:true={resp.isButtonGroup}>
+                <div class="format-btngroup" role="group">
+                    <template if:true={resp.data.body}>
+                        <p class="btngroup-body">{resp.data.body}</p>
+                    </template>
+                    <div class="btngroup-buttons">
+                        <template for:each={resp.data.buttons} for:item="btn">
+                            <lightning-button
+                                key={btn.id}
+                                label={btn.label}
+                                data-action={btn.action}
+                                data-value={btn.value}
+                                onclick={handleButtonClick}
+                                variant={btn.style === 'primary' ? 'brand' : btn.style === 'danger' ? 'destructive' : 'neutral'}>
+                            </lightning-button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <!-- InAppForm -->
+            <template if:true={resp.isForm}>
+                <div class="format-form">
+                    <template if:true={resp.data.title}>
+                        <h3 class="form-title">{resp.data.title}</h3>
+                    </template>
+                    <template if:true={resp.data.description}>
+                        <p class="form-desc">{resp.data.description}</p>
+                    </template>
+                    <form onsubmit={handleFormSubmit}>
+                        <template for:each={resp.data.fields} for:item="field">
+                            <div key={field.id} class="form-field">
+                                <template if:true={field.type === 'select'}>
+                                    <lightning-combobox
+                                        label={field.label}
+                                        data-field-id={field.id}
+                                        placeholder={field.placeholder}
+                                        options={field.options}
+                                        required={field.required}>
+                                    </lightning-combobox>
+                                </template>
+                                <template if:true={field.type === 'checkbox'}>
+                                    <lightning-input
+                                        type="checkbox"
+                                        label={field.label}
+                                        data-field-id={field.id}>
+                                    </lightning-input>
+                                </template>
+                                <template if:true={field.type === 'text' || field.type === 'email' || field.type === 'number'}>
+                                    <lightning-input
+                                        type={field.type}
+                                        label={field.label}
+                                        data-field-id={field.id}
+                                        placeholder={field.placeholder}
+                                        required={field.required}
+                                        pattern={field.pattern}>
+                                    </lightning-input>
+                                </template>
+                            </div>
+                        </template>
+                        <div class="form-actions">
+                            <lightning-button
+                                type="submit"
+                                label={resp.data.submitLabel}
+                                variant="brand">
+                            </lightning-button>
+                            <template if:true={resp.data.cancelLabel}>
+                                <lightning-button
+                                    label={resp.data.cancelLabel}
+                                    variant="neutral">
+                                </lightning-button>
+                            </template>
+                        </div>
+                    </form>
+                </div>
+            </template>
+
+            <!-- InAppCarousel -->
+            <template if:true={resp.isCarousel}>
+                <div class="format-carousel">
+                    <template if:true={resp.data.title}>
+                        <h3 class="carousel-title">{resp.data.title}</h3>
+                    </template>
+                    <div class="carousel-wrapper">
+                        <button class="carousel-nav carousel-nav-left" onclick={handleScrollLeft} aria-label="Scroll left">&#8249;</button>
+                        <div class="carousel-track" role="list">
+                            <template for:each={resp.data.cards} for:item="card">
+                                <div key={card.id} class="carousel-card" role="listitem">
+                                    <div class="carousel-img-wrapper">
+                                        <img class="carousel-image" src={card.imageUrl} alt="">
+                                        <template if:true={card.badge}>
+                                            <span class="carousel-badge">{card.badge}</span>
+                                        </template>
+                                    </div>
+                                    <div class="carousel-card-content">
+                                        <h4 class="carousel-card-title">{card.title}</h4>
+                                        <template if:true={card.description}>
+                                            <p class="carousel-card-desc">{card.description}</p>
+                                        </template>
+                                    </div>
+                                    <div class="carousel-card-actions">
+                                        <template for:each={card.buttons} for:item="btn">
+                                            <lightning-button
+                                                key={btn.id}
+                                                label={btn.label}
+                                                data-action={btn.action}
+                                                data-value={btn.value}
+                                                onclick={handleButtonClick}
+                                                variant="neutral">
+                                            </lightning-button>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                        <button class="carousel-nav carousel-nav-right" onclick={handleScrollRight} aria-label="Scroll right">&#8250;</button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Unknown Format -->
+            <template if:true={resp.isUnknown}>
+                <p class="format-text">{resp.data.body}</p>
+            </template>
+
+        </div>
+    </template>
+</template>
