@@ -6,7 +6,7 @@ Solution Guide — Custom Connections for WhatsApp
 
 ## Introduction
 
-Agentforce agents can respond with rich media on WhatsApp — carousels, quick reply buttons, image/video cards, and list pickers. This guide explains how to set it up using **Custom Connections**, a feature that lets you define structured response formats your agent can use on any channel you control.
+Agentforce agents can respond with rich media on WhatsApp — carousels, quick reply buttons, image/video cards, list pickers, and CTA URL buttons. This guide explains how to set it up using **Custom Connections**, a feature that lets you define structured response formats your agent can use on any channel you control.
 
 Instead of plain text, your agent outputs structured JSON that matches Meta's WhatsApp interactive message schemas. A lightweight webhook handler bridges the two APIs. The result: your customers see native WhatsApp rich media (scrollable cards, tappable buttons, expandable lists) powered by Agentforce's reasoning engine and CRM data.
 
@@ -42,7 +42,7 @@ The skill generates all response format files, the AiSurface definition, and opt
 sf project deploy start --source-dir unpackaged/ --target-org your-org-alias
 ```
 
-This deploys the 4 WhatsApp response formats and the AiSurface (Custom Connection definition) to your org.
+This deploys the 5 WhatsApp response formats and the AiSurface (Custom Connection definition) to your org.
 
 ### Step 3: Wire the Custom Connection to your agent
 
@@ -246,6 +246,7 @@ The `surfaceType: "Custom"` is what activates the WhatsApp response formats from
 | List Message | Expandable list picker with sections | 4-10 options grouped by category | Max 10 rows, 24 char titles |
 | Media Card | Image or video with caption text | Product photos, how-to videos | Image: 5MB, Video: 16MB |
 | Carousel | Horizontal scrollable cards | Product comparisons, catalogs | 2-10 cards, each with image + 2 buttons |
+| CTA URL Button | 1-2 tappable URL buttons | Payment links, document links, external portals | Max 2 buttons, 25 chars each |
 
 ### How the Agent Picks the Right Format
 
@@ -257,6 +258,7 @@ The agent automatically selects the format based on context:
 | "What's my order status?" | Quick Reply | 2-3 clear next actions (Confirm / Reschedule / Cancel) |
 | "Which store is nearest?" | List Message | Multiple options grouped by city |
 | "Show me the product details" | Media Card | Single image with descriptive caption |
+| "How do I pay my bill?" | CTA URL Button | Redirects to payment portal — no raw links in chat |
 
 ---
 
@@ -290,7 +292,7 @@ We have a **Custom Connections skill** that generates the entire Agentforce-side
 
 | Generated | Purpose |
 |-----------|---------|
-| 4 WhatsApp response formats | Pre-built schemas matching Meta's API with character limits enforced |
+| 5 WhatsApp response formats | Pre-built schemas matching Meta's API with character limits enforced |
 | Custom Connection definition | Tells the agent "this channel supports these rich formats" |
 | Surface instructions | Tells the agent WHEN to pick each format (buttons vs list vs carousel) |
 | Automated deploy script | One command deploys everything and wires it to the agent |

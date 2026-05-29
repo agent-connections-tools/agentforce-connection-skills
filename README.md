@@ -413,7 +413,7 @@ Both options do the same thing — you just pick where you want it to run.
 ### What gets generated
 
 The skill generates a complete, deploy-ready webhook handler with:
-- Full message translation (all 4 WhatsApp formats + plain text fallback)
+- Full message translation (all 5 WhatsApp formats + plain text fallback)
 - Session management (maps phone numbers to Agent API sessions)
 - Meta webhook verification (the GET challenge Meta requires)
 - Deploy script and step-by-step README
@@ -487,6 +487,7 @@ You don't need to understand these files — the skill generates them and the de
 | WhatsApp List | Expandable list picker with sections (4-10 options) |
 | WhatsApp Media Card | Image or video with caption text |
 | WhatsApp Carousel | Horizontal scrollable cards (2-10 cards with images + buttons) |
+| WhatsApp CTA URL Button | 1-2 tappable URL buttons for external links (payment pages, portals, documents) |
 | Teams Buttons | Adaptive Card with 1-6 Action.Submit buttons |
 | Teams Choice Set | Dropdown or radio list (2-20 options with labels) |
 | Teams Hero Card | Large image with title, subtitle, text, and buttons |

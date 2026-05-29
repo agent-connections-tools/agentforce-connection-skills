@@ -13,7 +13,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Text choices (2-7 clickable options)
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
-   - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels — pre-built to match Meta's API)
+   - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels, CTA URL buttons — pre-built to match Meta's API)
    - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
    - In-app portal / custom UI (cards, lists, button groups, forms, carousels — for embedding an agent in your own web app or Experience Cloud site)
    - Custom JSON (describe the structure you want)
@@ -351,6 +351,21 @@ Use these exact XML structures. Replace placeholders with the user's values.
         <sortOrder>7</sortOrder>
     </instructions>
     <masterLabel>{Client Display Name} WhatsApp Carousel</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — WhatsApp CTA URL Button
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on WhatsApp. Use this to send a message with 1-2 tappable URL buttons that redirect the user to an external link (payment pages, documents, portals, forms). The user taps the button and opens the URL directly — no raw links in text.</description>
+    <input>{"type":"object","properties":{"body":{"type":"string","description":"Main message text (max 1024 chars)","maxLength":1024},"header":{"type":"string","description":"Optional header text (max 60 chars)","maxLength":60},"footer":{"type":"string","description":"Optional footer text (max 60 chars)","maxLength":60},"buttons":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Button label (max 25 chars)","maxLength":25},"url":{"type":"string","description":"HTTPS URL the button opens"}},"required":["title","url"]},"minItems":1,"maxItems":2}},"required":["body","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}WhatsAppCtaUrl when the user needs to visit an external link (payment page, document, portal, form). NEVER send raw URLs in message text — always use this CTA URL button format instead. Maximum 2 buttons per message.</instruction>
+        <sortOrder>8</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} WhatsApp CTA URL Button</masterLabel>
 </AiResponseFormat>
 ```
 
@@ -781,7 +796,7 @@ The README walks through:
 - Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
 - For Option A: also generate a Custom Metadata Type record with the user's verify token and phone number ID
 - For Option B: populate the `.env.example` with the user's values as comments (never put actual secrets in committed files)
-- The response format translation function (`convertToMetaFormat` / `translateToWhatsApp`) must handle all 4 WhatsApp formats plus plain text fallback
+- The response format translation function (`convertToMetaFormat` / `translateToWhatsApp`) must handle all 5 WhatsApp formats plus plain text fallback
 - After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
 
 ---
@@ -963,8 +978,8 @@ The README walks through:
 - MIAW handoff: Do NOT hardcode org-specific values. Use Custom Labels for deployment name and queue name.
 - MIAW handoff: Truncate conversation summary to 4000 characters max (field limit)
 - MIAW handoff: The Apex class must handle bulk (list of requests) even though most calls will be single
-- WhatsApp: When user picks "WhatsApp rich media," generate ALL 4 WhatsApp formats (Quick Reply, List, Media, Carousel). Don't ask which ones — they work as a set.
-- WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Respect Meta character limits: button text 20 chars, list row title 24 chars, body text 1024 chars."
+- WhatsApp: When user picks "WhatsApp rich media," generate ALL 5 WhatsApp formats (Quick Reply, List, Media, Carousel, CTA URL Button). Don't ask which ones — they work as a set.
+- WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Use WhatsApp CTA URL button when the user needs to visit an external link — never send raw URLs in text. Respect Meta character limits: button text 20 chars, CTA URL button title 25 chars, list row title 24 chars, body text 1024 chars."
 - WhatsApp: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
 - Teams: When user picks "Microsoft Teams rich media," generate ALL 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel). Don't ask which ones — they work as a set.
 - Teams: Add these surface instructions: "Use Teams buttons for 1-6 options. Use Teams choice set for 7+ options or when options need labels. Use Teams hero card when sharing a single product or visual. Use Teams carousel for product comparisons. Button labels max 40 chars."
