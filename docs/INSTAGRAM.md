@@ -106,17 +106,7 @@ If you see plain text instead of a format, check that the AiSurface is wired to 
 
 ## Architecture
 
-```
-┌──────────────┐       ┌──────────────────┐       ┌─────────────────────┐
-│   Customer   │       │  Your Webhook    │       │    Agentforce       │
-│  (Instagram) │◄─────►│    Handler       │◄─────►│    Agent API        │
-│              │       │  (Node/Apex)     │       │                     │
-└──────────────┘       └──────────────────┘       └─────────────────────┘
-       │                       │                           │
-       │  Instagram DM         │  Agent API (REST)         │  Reasoning +
-       │  Send API             │  surfaceType: "Custom"    │  CRM Data
-       │  (graph.facebook.com) │                           │
-```
+![Instagram Rich Media Architecture](./instagram-architecture.png)
 
 ---
 
