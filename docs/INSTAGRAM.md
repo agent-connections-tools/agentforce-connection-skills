@@ -225,18 +225,19 @@ Story replies arrive as regular messages with an `attachments` array containing 
 
 ### Can I run both WhatsApp and Instagram on the same agent?
 
-Yes. Each gets its own Custom Connection (AiSurface) with channel-specific response formats. The agent uses `surfaceId` to determine which formats are available for each session. You'll need separate webhook handlers (or a unified handler that detects the source).
+Yes — starting Summer '26, which adds support for multiple Custom Connections per agent. Each channel gets its own Custom Connection (AiSurface) with channel-specific response formats. The agent uses `surfaceId` to determine which formats are available for each session. You'll need separate webhook handlers (or a unified handler that detects the source).
 
-### Is this available today?
+### When is this available?
 
-**Yes.** No roadmap dependency. Uses:
+**Summer '26 (Release 262).** Requires:
 - Agent API (GA)
 - Custom Connections / AiSurface / AiResponseFormat (GA)
+- Multiple Custom Connections per agent (Summer '26)
 - Meta Instagram Messaging API (Meta's product, available to all apps with instagram_manage_messages approval)
 
 ---
 
-## What We Have Ready Today
+## What's Ready for Summer '26
 
 | Generated | Purpose |
 |-----------|---------|
