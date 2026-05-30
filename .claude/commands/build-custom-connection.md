@@ -14,6 +14,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
    - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels, CTA URL buttons — pre-built to match Meta's API)
+   - Instagram rich media (quick replies, carousels, button templates, media templates — pre-built to match Meta's Instagram Messaging API)
    - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
    - In-app portal / custom UI (cards, lists, button groups, forms, carousels — for embedding an agent in your own web app or Experience Cloud site)
    - Custom JSON (describe the structure you want)
@@ -24,7 +25,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
-5. **(Only if user picked "WhatsApp rich media", "Microsoft Teams rich media", or "In-app portal / custom UI" in Q2) Do you want me to generate the webhook/proxy handler too?** This is the bridge between the channel/app and the Agent API. Two options:
+5. **(Only if user picked "WhatsApp rich media", "Instagram rich media", "Microsoft Teams rich media", or "In-app portal / custom UI" in Q2) Do you want me to generate the webhook/proxy handler too?** This is the bridge between the channel/app and the Agent API. Two options:
    - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce or uses Experience Cloud.
    - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
 
@@ -32,6 +33,10 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
 
    **For WhatsApp:**
    - What is your Meta WhatsApp Business phone number ID? (Meta App Dashboard > WhatsApp > Getting Started)
+   - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
+
+   **For Instagram:**
+   - What is your Instagram Professional Account ID? (Meta App Dashboard > Instagram > Messaging > Instagram Account ID)
    - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
 
    **For Teams:**
@@ -597,7 +602,7 @@ public class MIAWHandoff_{ClientName} {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ApexClass xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>62.0</apiVersion>
+    <apiVersion>66.0</apiVersion>
     <status>Active</status>
 </ApexClass>
 ```
@@ -970,6 +975,7 @@ The README walks through:
 - File names must match the developer name inside the XML
 - The `input` field in AiResponseFormat must be valid JSON on a single line (no pretty-printing inside the XML tag)
 - Keep response formats under 7 per connection
+- If the user's selections would generate 8 or more formats (e.g., WhatsApp rich media + generic formats), warn them that the agent may struggle to select the right format and suggest dropping the Time Picker or reducing to only the channel-specific set.
 - Only one custom connection per agent — if the agent already has a surfaceType=Custom entry, replace it rather than adding a second one
 - Never create a new GenAiPlannerBundle — always add plannerSurfaces to the existing bundle
 - Auto-generate the surface ID from the client name (first 3-4 uppercase letters + "01") — don't ask the user for it

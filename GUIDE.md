@@ -870,6 +870,65 @@ If you only see plain text: check that your custom connection deployed correctly
 
 ---
 
+## Step 15: Instagram Webhook Handler (Optional)
+
+If you chose "Instagram rich media" response formats in Step 1 and want Instagram DMs to reach your agent, you need a webhook handler. This works the same way as WhatsApp — a service sits between Meta's Instagram Messaging API and the Salesforce Agent API.
+
+### Key differences from WhatsApp
+
+| Aspect | WhatsApp | Instagram |
+|--------|----------|-----------|
+| Webhook payload | `entry[].changes[].value.messages[]` | `entry[].messaging[].message` |
+| Reply API | `POST /{phone-number-id}/messages` | `POST /{instagram-id}/messages` |
+| Auth token | WhatsApp Cloud API token | Page Access Token with `instagram_manage_messages` |
+| User identifier | Phone number | Instagram-Scoped ID (IGSID) |
+| Postback events | Not applicable | Separate `messaging_postbacks` subscription needed |
+| Supported formats | Quick Reply (3), List, Media, Carousel, CTA URL | Quick Reply (13), Carousel, Button Template, Media Template |
+
+### Option A: Apex inside Salesforce
+
+Same pattern as WhatsApp Option A:
+- Apex REST class exposed via Salesforce Site
+- Custom object (`Instagram_Session__c`) maps sender IDs to Agent API sessions
+- Named Credentials store your Meta API token
+
+**Setup steps:**
+1. Deploy: `cd output/webhook && ./deploy_webhook.sh my-org`
+2. Go to Meta App Dashboard > Instagram > Webhooks
+3. Set Callback URL to your Site URL + `/services/apexrest/instagram/{ClientName}/webhook`
+4. Enter your verify token
+5. Subscribe to `messages` and `messaging_postbacks`
+6. Send a DM to your Instagram Professional Account
+
+### Option B: External service (Node.js)
+
+Same pattern as WhatsApp Option B — lightweight Express app.
+
+**Setup steps:**
+1. Deploy: `cd output/webhook && ./deploy_heroku.sh`
+2. Set environment variables:
+   - `META_VERIFY_TOKEN` — the token you chose
+   - `META_PAGE_ACCESS_TOKEN` — with `instagram_manage_messages` permission
+   - `META_APP_SECRET` — for signature verification
+   - `META_INSTAGRAM_ID` — your Instagram Professional Account ID
+   - `SF_CLIENT_ID`, `SF_CLIENT_SECRET`, `SF_AGENT_ID` — same as WhatsApp
+3. Go to Meta App Dashboard > Instagram > Webhooks
+4. Set Callback URL and verify token
+5. Subscribe to `messages` and `messaging_postbacks`
+6. Send a test DM
+
+### Testing the full flow
+
+1. Send a DM to your Instagram Professional Account
+2. The webhook receives it, creates/reuses an Agent API session, and forwards to your agent
+3. The agent responds with structured JSON (carousel, buttons, quick replies, or media)
+4. The handler translates the JSON to Meta's Instagram format and sends it back
+5. You see native Instagram rich media in your DMs
+
+For the full solution guide including architecture diagrams, security checklist, and common mistakes, see **[docs/INSTAGRAM.md](./docs/INSTAGRAM.md)**.
+
+---
+
 ## Tips
 
 - **Keep response formats under 7 per connection** — more than that and the agent struggles to select the right one

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Instagram Session</label>
+    <pluralLabel>Instagram Sessions</pluralLabel>
+    <nameField>
+        <label>Session Name</label>
+        <type>AutoNumber</type>
+        <displayFormat>IG-{0000000}</displayFormat>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <description>Maps Instagram sender IDs to Agentforce Agent API session IDs. Used by the Instagram webhook handler to maintain conversation continuity.</description>
+
+    <fields>
+        <fullName>Sender_Id__c</fullName>
+        <label>Sender ID</label>
+        <type>Text</type>
+        <length>50</length>
+        <required>true</required>
+        <unique>true</unique>
+        <externalId>true</externalId>
+        <description>The Instagram-scoped user ID (IGSID). This is the unique key for session lookup.</description>
+    </fields>
+
+    <fields>
+        <fullName>Agent_Session_Id__c</fullName>
+        <label>Agent Session ID</label>
+        <type>Text</type>
+        <length>255</length>
+        <required>true</required>
+        <externalId>false</externalId>
+        <description>The session ID returned by the Agentforce Agent API when a new session was created.</description>
+    </fields>
+
+    <fields>
+        <fullName>Last_Sequence_Id__c</fullName>
+        <label>Last Sequence ID</label>
+        <type>Number</type>
+        <precision>10</precision>
+        <scale>0</scale>
+        <required>true</required>
+        <defaultValue>1</defaultValue>
+        <description>Tracks the message sequence number for the Agent API.</description>
+    </fields>
+
+    <fields>
+        <fullName>Last_Activity__c</fullName>
+        <label>Last Activity</label>
+        <type>DateTime</type>
+        <required>true</required>
+        <description>When the last message was processed for this session. Sessions older than 30 minutes are expired.</description>
+    </fields>
+</CustomObject>

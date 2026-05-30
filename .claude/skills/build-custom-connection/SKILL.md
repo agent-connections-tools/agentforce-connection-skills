@@ -25,6 +25,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Choices with images (product cards, listings with thumbnails)
    - Time picker (select a time slot)
    - WhatsApp rich media (quick reply buttons, list messages, media cards, carousels, CTA URL buttons — pre-built to match Meta's API)
+   - Instagram rich media (quick replies, carousels, button templates, media templates — pre-built to match Meta's Instagram Messaging API)
    - Microsoft Teams rich media (Adaptive Card buttons, choice sets, hero cards, carousels — pre-built to match Bot Framework)
    - In-app portal / custom UI (cards, lists, button groups, forms, carousels — for embedding an agent in your own web app or Experience Cloud site)
    - Custom JSON (describe the structure you want)
@@ -35,7 +36,7 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
    - Should the agent summarize the conversation before handoff? (Yes = generates a summary prompt. No = passes raw transcript.)
    - What Omni-Channel queue or skill should receive the handoff? (e.g., `Tier2_Support`)
 
-5. **(Only if user picked "WhatsApp rich media", "Microsoft Teams rich media", or "In-app portal / custom UI" in Q2) Do you want me to generate the webhook/proxy handler too?** This is the bridge between the channel/app and the Agent API. Two options:
+5. **(Only if user picked "WhatsApp rich media", "Instagram rich media", "Microsoft Teams rich media", or "In-app portal / custom UI" in Q2) Do you want me to generate the webhook/proxy handler too?** This is the bridge between the channel/app and the Agent API. Two options:
    - **Option A: Apex inside Salesforce** — Everything stays in your Salesforce org. No external hosting. Best if your team works primarily in Salesforce or uses Experience Cloud.
    - **Option B: External service (Node.js)** — A lightweight app you deploy to Heroku, Railway, or any cloud host. Best for high message volumes or teams that prefer JavaScript.
 
@@ -43,6 +44,10 @@ Ask the user these questions ONE AT A TIME (don't dump them all at once):
 
    **For WhatsApp:**
    - What is your Meta WhatsApp Business phone number ID? (Meta App Dashboard > WhatsApp > Getting Started)
+   - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
+
+   **For Instagram:**
+   - What is your Instagram Professional Account ID? (Meta App Dashboard > Instagram > Messaging > Instagram Account ID)
    - What verify token do you want to use? (Any string you choose — you'll enter the same one in Meta's webhook config)
 
    **For Teams:**
@@ -146,10 +151,46 @@ else
         echo "Remove the existing custom surface in Agent Builder first, then re-run."
         exit 1
     fi
-    # Add the new plannerSurfaces entry before the closing tag
-    SURFACE_BLOCK='    <plannerSurfaces>\n        <adaptiveResponseAllowed>true</adaptiveResponseAllowed>\n        <callRecordingAllowed>false</callRecordingAllowed>\n        <surface>{ClientName}_{surfaceId}</surface>\n        <surfaceType>Custom</surfaceType>\n    </plannerSurfaces>'
-    sed -i.bak "s|</GenAiPlannerBundle>|${SURFACE_BLOCK}\n</GenAiPlannerBundle>|" "$BUNDLE_FILE"
-    rm -f "${BUNDLE_FILE}.bak"
+    # Insert the new plannerSurfaces entry right after the LAST existing </plannerSurfaces>
+    # (NOT before </GenAiPlannerBundle>). The platform rejects bundles where
+    # plannerSurfaces blocks aren't grouped together — and bundles often have
+    # other elements (e.g., <voiceDefinition>) between the existing
+    # plannerSurfaces group and </GenAiPlannerBundle>. Inserting before the
+    # closing tag puts our new block on the wrong side of those elements,
+    # splitting the group and triggering "Element plannerSurfaces is duplicated."
+    if grep -q "</plannerSurfaces>" "$BUNDLE_FILE"; then
+        # Bundle has existing plannerSurfaces — insert after the last one.
+        # We write the block to a temp file because BSD awk (macOS default)
+        # rejects multi-line strings passed via -v.
+        BLOCK_FILE=$(mktemp)
+        cat > "$BLOCK_FILE" << 'BLOCKEOF'
+    <plannerSurfaces>
+        <adaptiveResponseAllowed>true</adaptiveResponseAllowed>
+        <callRecordingAllowed>false</callRecordingAllowed>
+        <surface>{ClientName}_{surfaceId}</surface>
+        <surfaceType>Custom</surfaceType>
+    </plannerSurfaces>
+BLOCKEOF
+        awk -v blockfile="$BLOCK_FILE" '
+            /<\/plannerSurfaces>/ { last_idx = NR }
+            { lines[NR] = $0 }
+            END {
+                for (i = 1; i <= NR; i++) {
+                    print lines[i]
+                    if (i == last_idx) {
+                        while ((getline line < blockfile) > 0) print line
+                        close(blockfile)
+                    }
+                }
+            }
+        ' "$BUNDLE_FILE" > "${BUNDLE_FILE}.tmp" && mv "${BUNDLE_FILE}.tmp" "$BUNDLE_FILE"
+        rm -f "$BLOCK_FILE"
+    else
+        # No existing plannerSurfaces — insert before </GenAiPlannerBundle>.
+        SURFACE_BLOCK='    <plannerSurfaces>\n        <adaptiveResponseAllowed>true</adaptiveResponseAllowed>\n        <callRecordingAllowed>false</callRecordingAllowed>\n        <surface>{ClientName}_{surfaceId}</surface>\n        <surfaceType>Custom</surfaceType>\n    </plannerSurfaces>'
+        sed -i.bak "s|</GenAiPlannerBundle>|${SURFACE_BLOCK}\n</GenAiPlannerBundle>|" "$BUNDLE_FILE"
+        rm -f "${BUNDLE_FILE}.bak"
+    fi
 fi
 
 # Add package.xml for the redeploy
@@ -343,6 +384,66 @@ Use these exact XML structures. Replace placeholders with the user's values.
 </AiResponseFormat>
 ```
 
+### AiResponseFormat — Instagram Quick Reply
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Instagram. Use this to show up to 13 quick-reply buttons below a message. Each button has a short label the user can tap to respond instantly.</description>
+    <input>{"type":"object","properties":{"text":{"type":"string","description":"Main message text (max 1000 chars)","maxLength":1000},"buttons":{"type":"array","items":{"type":"object","properties":{"content_type":{"type":"string","enum":["text"],"description":"Button type (always text for quick replies)"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20},"payload":{"type":"string","description":"Postback payload sent when tapped"}},"required":["content_type","title","payload"]},"minItems":1,"maxItems":13}},"required":["text","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InstagramQuickReply when presenting options the user can tap to reply. Supports up to 13 buttons — use this for simple choices, confirmations, or navigation. Keep button labels short (max 20 chars).</instruction>
+        <sortOrder>4</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram Quick Reply</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Instagram Carousel (Generic Template)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Instagram. Use this to show a horizontal scrollable carousel of 1-10 cards. Each card has an image, title, subtitle, and up to 3 buttons. Best for product comparisons, catalogs, or browsing options.</description>
+    <input>{"type":"object","properties":{"elements":{"type":"array","items":{"type":"object","properties":{"title":{"type":"string","description":"Card title (max 80 chars)","maxLength":80},"subtitle":{"type":"string","description":"Card subtitle (max 80 chars)","maxLength":80},"image_url":{"type":"string","description":"HTTPS URL to card image"},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["web_url","postback"],"description":"Button type: web_url opens a link, postback sends data back"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20},"url":{"type":"string","description":"URL to open (required for web_url type)"},"payload":{"type":"string","description":"Postback payload (required for postback type)"}},"required":["type","title"]},"minItems":1,"maxItems":3}},"required":["title"]},"minItems":1,"maxItems":10}},"required":["elements"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InstagramGenericTemplate when comparing multiple items side by side (products, plans, listings). Each card MUST have a title. Include images when available. Use postback buttons for in-conversation actions and web_url buttons for external links. Maximum 10 cards.</instruction>
+        <sortOrder>5</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram Carousel</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Instagram Button Template
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Instagram. Use this to send a text message with up to 3 structured buttons below it. Buttons can open URLs or trigger postback actions. Best for CTAs like "View Order", "Contact Support", or "Visit Website".</description>
+    <input>{"type":"object","properties":{"text":{"type":"string","description":"Main message text above the buttons (max 640 chars)","maxLength":640},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["web_url","postback"],"description":"Button type: web_url opens a link, postback sends data back"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20},"url":{"type":"string","description":"URL to open (required for web_url type)"},"payload":{"type":"string","description":"Postback payload (required for postback type)"}},"required":["type","title"]},"minItems":1,"maxItems":3}},"required":["text","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InstagramButtonTemplate when the user needs to take an action via a link (payment page, tracking, portal) or when presenting 1-3 structured actions. Use web_url for external links, postback for in-conversation choices. NEVER send raw URLs in text — use this button template instead.</instruction>
+        <sortOrder>6</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram Buttons</masterLabel>
+</AiResponseFormat>
+```
+
+### AiResponseFormat — Instagram Media Template
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Instagram. Use this to send an image or video with an optional button. Best for product photos, how-to images, or video explanations paired with a single CTA.</description>
+    <input>{"type":"object","properties":{"media_type":{"type":"string","enum":["image","video"],"description":"Type of media to send"},"url":{"type":"string","description":"HTTPS URL to the media file (must be publicly accessible)"},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["web_url","postback"],"description":"Button type"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20},"url":{"type":"string","description":"URL to open (for web_url type)"},"payload":{"type":"string","description":"Postback payload (for postback type)"}},"required":["type","title"]},"maxItems":1}},"required":["media_type","url"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InstagramMediaTemplate when sharing a product image, screenshot, or video with the user. Optionally include one button for a related action (e.g., "Buy Now", "Learn More"). The media URL must be publicly accessible via HTTPS.</instruction>
+        <sortOrder>7</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram Media</masterLabel>
+</AiResponseFormat>
+```
+
 ### AiSurface
 
 ```xml
@@ -513,7 +614,7 @@ public class MIAWHandoff_{ClientName} {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <ApexClass xmlns="http://soap.sforce.com/2006/04/metadata">
-    <apiVersion>62.0</apiVersion>
+    <apiVersion>66.0</apiVersion>
     <status>Active</status>
 </ApexClass>
 ```
@@ -660,6 +761,7 @@ Add a "Human Handoff" section to the README:
 - File names must match the developer name inside the XML
 - The `input` field in AiResponseFormat must be valid JSON on a single line (no pretty-printing inside the XML tag)
 - Keep response formats under 7 per connection
+- If the user's selections would generate 8 or more formats (e.g., WhatsApp rich media + generic formats), warn them that the agent may struggle to select the right format and suggest dropping the Time Picker or reducing to only the channel-specific set.
 - Only one custom connection per agent — if the agent already has a surfaceType=Custom entry, replace it rather than adding a second one
 - Never create a new GenAiPlannerBundle — always add plannerSurfaces to the existing bundle
 - Auto-generate the surface ID from the client name (first 3-4 uppercase letters + "01") — don't ask the user for it
@@ -671,6 +773,10 @@ Add a "Human Handoff" section to the README:
 - WhatsApp: When user picks "WhatsApp rich media," generate ALL 5 WhatsApp formats (Quick Reply, List, Media, Carousel, CTA URL Button). Don't ask which ones — they work as a set.
 - WhatsApp: Add these surface instructions: "Use WhatsApp quick reply buttons for 1-3 options. Use WhatsApp list for 4-10 options. Use WhatsApp media when sharing images or videos. Use WhatsApp carousel for product comparisons. Use WhatsApp CTA URL button when the user needs to visit an external link — never send raw URLs in text. Respect Meta character limits: button text 20 chars, CTA URL button title 25 chars, list row title 24 chars, body text 1024 chars."
 - WhatsApp: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
+- Instagram: When user picks "Instagram rich media," generate ALL 4 Instagram formats (Quick Reply, Generic Template/Carousel, Button Template, Media Template). Don't ask which ones — they work as a set.
+- Instagram: Add these surface instructions: "Use Instagram quick reply for 1-13 tappable options. Use Instagram carousel (generic template) for comparing multiple items with images. Use Instagram button template for 1-3 structured actions or links — never send raw URLs in text. Use Instagram media template for sharing a single image or video with an optional CTA button. Respect Meta character limits: button title 20 chars, card title 80 chars, button template text 640 chars, message text 1000 chars."
+- Instagram: If user picks a webhook handler option, generate the handler from templates in `templates/instagram-webhook/`. If they skip Q5, don't generate the webhook — they'll build it themselves.
+- Instagram: Use the templates in `templates/instagram-response-formats/` as the basis for all 4 formats + the AiSurface.
 - Teams: When user picks "Microsoft Teams rich media," generate ALL 4 Teams formats (Buttons, ChoiceSet, HeroCard, Carousel). Don't ask which ones — they work as a set.
 - Teams: Add these surface instructions: "Use Teams buttons for 1-6 options. Use Teams choice set for 7+ options or when options need labels. Use Teams hero card when sharing a single product or visual. Use Teams carousel for product comparisons. Button labels max 40 chars."
 - Teams: If user picks a webhook handler option, generate the handler from templates. If they skip Q5, don't generate the webhook — they'll build it themselves.
@@ -733,12 +839,75 @@ The README walks through:
 4. Configuring the webhook URL in Meta's dashboard
 5. Testing end-to-end
 
-### Key rules for webhook generation
+### Key rules for WhatsApp webhook generation
 
 - Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
 - For Option A: also generate a Custom Metadata Type record with the user's verify token and phone number ID
 - For Option B: populate the `.env.example` with the user's values as comments (never put actual secrets in committed files)
 - The response format translation function (`convertToMetaFormat` / `translateToWhatsApp`) must handle all 5 WhatsApp formats plus plain text fallback
+- After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
+
+---
+
+## Instagram Webhook Handler (generated only if user picked Instagram and said yes to question 5)
+
+When the user picks an Instagram webhook handler option, generate the handler code in `output/webhook/`.
+
+### Option A: Apex Inside Salesforce
+
+Use the templates in `templates/instagram-webhook/option-a-apex/` as the basis. Copy them to `output/webhook/` and replace all `{ClientName}` and `{surfaceId}` placeholders with actual values. Also replace the Instagram ID in the Custom Metadata template.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── classes/
+│   ├── InstagramWebhook_<ClientName>.cls
+│   └── InstagramWebhook_<ClientName>.cls-meta.xml
+├── objects/
+│   └── Instagram_Session__c.object-meta.xml
+├── deploy_webhook.sh
+└── README.md
+```
+
+The deploy script deploys the Apex class, custom object, and site config. The README walks through:
+1. Creating a Meta App with Instagram Messaging product
+2. Connecting an Instagram Professional Account
+3. Setting up Named Credentials in Salesforce
+4. Configuring the Salesforce Site
+5. Entering the webhook URL in Meta's dashboard
+6. Testing end-to-end
+
+### Option B: External Service (Node.js)
+
+Use the templates in `templates/instagram-webhook/option-b-node/` as the basis. Copy them to `output/webhook/` and replace `{ClientName}` and `{surfaceId}` placeholders.
+
+Generated files in `output/webhook/`:
+```
+webhook/
+├── index.js
+├── package.json
+├── .env.example
+├── Procfile
+├── deploy_heroku.sh
+└── README.md
+```
+
+The README walks through:
+1. Creating a Meta App with Instagram Messaging product
+2. Getting Page Access Token with instagram_manage_messages permission
+3. Getting Salesforce ECA credentials (Consumer Key + Secret)
+4. Deploying to Heroku/Railway (one command)
+5. Configuring the webhook URL in Meta's dashboard
+6. Testing end-to-end
+
+### Key rules for Instagram webhook generation
+
+- Replace ALL `{ClientName}` and `{surfaceId}` placeholders in the template files
+- For Option A: also generate a Custom Metadata Type record with the user's verify token and Instagram ID
+- For Option B: populate the `.env.example` with the user's values as comments (never put actual secrets in committed files)
+- The response format translation function must handle all 4 Instagram formats (QuickReply, GenericTemplate, ButtonTemplate, MediaTemplate) plus plain text fallback
+- Instagram uses `entry[].messaging[]` payload structure (NOT `entry[].changes[].value.messages[]` like WhatsApp)
+- Instagram sends postback events for button taps — the handler must process both `message` and `postback` event types
 - After generating, tell the user: "I've generated the webhook handler. Deploy the connection first (`./deploy.sh`), then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)."
 
 ---

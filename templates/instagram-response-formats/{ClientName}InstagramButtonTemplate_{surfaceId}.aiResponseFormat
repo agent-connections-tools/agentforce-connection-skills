@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiResponseFormat xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>A response action for {ClientName} on Instagram. Use this to send a text message with up to 3 structured buttons below it. Buttons can open URLs or trigger postback actions. Best for CTAs like "View Order", "Contact Support", or "Visit Website".</description>
+    <input>{"type":"object","properties":{"text":{"type":"string","description":"Main message text above the buttons (max 640 chars)","maxLength":640},"buttons":{"type":"array","items":{"type":"object","properties":{"type":{"type":"string","enum":["web_url","postback"],"description":"Button type: web_url opens a link, postback sends data back"},"title":{"type":"string","description":"Button label (max 20 chars)","maxLength":20},"url":{"type":"string","description":"URL to open (required for web_url type)"},"payload":{"type":"string","description":"Postback payload (required for postback type)"}},"required":["type","title"]},"minItems":1,"maxItems":3}},"required":["text","buttons"]}</input>
+    <instructions>
+        <instruction>Use {ClientName}InstagramButtonTemplate when the user needs to take an action via a link (payment page, tracking, portal) or when presenting 1-3 structured actions. Use web_url for external links, postback for in-conversation choices. NEVER send raw URLs in text — use this button template instead.</instruction>
+        <sortOrder>6</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram Buttons</masterLabel>
+</AiResponseFormat>

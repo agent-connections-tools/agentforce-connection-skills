@@ -73,7 +73,7 @@ Claude will ask you:
 2. What response formats do you need?
 3. Any special instructions for the agent?
 4. Do you need human handoff? (optional — lets your agent transfer to a live person when it can't help)
-5. Do you want a WhatsApp webhook handler? (only if you picked WhatsApp rich media in Q2)
+5. Do you want a webhook handler? (only if you picked WhatsApp, Instagram, Teams, or Portal in Q2)
 
 It generates a complete deploy-ready package in `output/` with a fully automated deploy script.
 
@@ -385,6 +385,10 @@ All you need to do:
 
 For a full solution guide covering architecture, ECA authentication, security, and the end-to-end flow, see **[docs/WHATSAPP.md](./docs/WHATSAPP.md)**.
 
+## Instagram Rich Media
+
+For a full solution guide covering Instagram Messaging API, carousel/button/media templates, webhook setup, and the end-to-end flow, see **[docs/INSTAGRAM.md](./docs/INSTAGRAM.md)**.
+
 ## Microsoft Teams Rich Media
 
 For a full solution guide covering Azure Bot registration, Adaptive Cards, JWT authentication, and the end-to-end flow, see **[docs/TEAMS.md](./docs/TEAMS.md)**.
@@ -393,15 +397,15 @@ For a full solution guide covering Azure Bot registration, Adaptive Cards, JWT a
 
 For a full solution guide covering proxy architecture, end-user authentication (Auth0/Okta/SF Identity), Experience Cloud LWC setup, and the end-to-end flow, see **[docs/PORTAL.md](./docs/PORTAL.md)**.
 
-## WhatsApp Webhook Handler (Optional)
+## Webhook Handlers (Optional)
 
-If you pick "WhatsApp rich media" in question 2, the skill asks a follow-up: do you also want to generate the webhook handler? This is the bridge between Meta's WhatsApp Cloud API and the Agentforce Agent API.
+If you pick "WhatsApp rich media", "Instagram rich media", "Microsoft Teams rich media", or "In-app portal" in question 2, the skill asks a follow-up: do you also want to generate the webhook/proxy handler? This is the bridge between the external channel and the Agentforce Agent API.
 
 ### Why you need a webhook handler
 
-Meta's WhatsApp API and the Agent API don't speak the same language. The handler translates between them — receiving messages from WhatsApp, routing them to your agent, and sending the agent's structured responses back as native WhatsApp rich media (carousels, buttons, lists, images).
+Meta's APIs (WhatsApp, Instagram) and the Agent API don't speak the same language. The handler translates between them — receiving messages from the channel, routing them to your agent, and sending the agent's structured responses back as native rich media.
 
-### Two options
+### Two options (same for all channels)
 
 | Option | Where it runs | Best for |
 |--------|---------------|----------|
@@ -413,9 +417,9 @@ Both options do the same thing — you just pick where you want it to run.
 ### What gets generated
 
 The skill generates a complete, deploy-ready webhook handler with:
-- Full message translation (all 5 WhatsApp formats + plain text fallback)
-- Session management (maps phone numbers to Agent API sessions)
-- Meta webhook verification (the GET challenge Meta requires)
+- Full message translation (all channel-specific formats + plain text fallback)
+- Session management (maps user IDs to Agent API sessions)
+- Platform webhook verification (the GET challenge Meta requires)
 - Deploy script and step-by-step README
 - Error handling with friendly user-facing messages
 
@@ -423,14 +427,21 @@ The skill generates a complete, deploy-ready webhook handler with:
 
 1. Deploy the custom connection first (`./deploy.sh`)
 2. Then deploy the webhook (`./webhook/deploy_webhook.sh` or `./webhook/deploy_heroku.sh`)
-3. Enter the webhook URL in Meta's dashboard (the README walks you through this)
-4. Send a test message from WhatsApp — you should see rich media responses
+3. Enter the webhook URL in the platform's dashboard (the README walks you through this)
+4. Send a test message — you should see rich media responses
 
 ### What you need first
 
+**For WhatsApp:**
 - A Meta Business account with WhatsApp Cloud API access
 - A WhatsApp Business phone number (Meta App Dashboard > WhatsApp > Getting Started)
-- For Option B: a cloud hosting account (Heroku, Railway, or similar)
+
+**For Instagram:**
+- A Meta Business account with an Instagram Professional Account (Business or Creator) connected
+- Instagram Messaging product enabled on your Meta app
+- Page Access Token with `instagram_manage_messages` permission
+
+**For both:** Option B requires a cloud hosting account (Heroku, Railway, or similar)
 
 ---
 
@@ -488,6 +499,10 @@ You don't need to understand these files — the skill generates them and the de
 | WhatsApp Media Card | Image or video with caption text |
 | WhatsApp Carousel | Horizontal scrollable cards (2-10 cards with images + buttons) |
 | WhatsApp CTA URL Button | 1-2 tappable URL buttons for external links (payment pages, portals, documents) |
+| Instagram Quick Reply | Up to 13 tappable button pills below a message |
+| Instagram Carousel | Horizontal scrollable cards (1-10 cards with images, titles, and buttons) |
+| Instagram Button Template | Text with 1-3 structured buttons (URL or postback) |
+| Instagram Media Template | Image or video with an optional CTA button |
 | Teams Buttons | Adaptive Card with 1-6 Action.Submit buttons |
 | Teams Choice Set | Dropdown or radio list (2-20 options with labels) |
 | Teams Hero Card | Large image with title, subtitle, text, and buttons |

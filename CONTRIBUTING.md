@@ -22,10 +22,15 @@ Thanks for your interest in improving the Custom Connections Skill. Here's how t
 
 If you want to add a new response format (e.g., a carousel, a form, a location picker):
 
-1. Add the XML template to `.claude/commands/build-custom-connection.md` under the "Metadata templates" section
-2. Add the format as an option in Step 1 question 2 (the "What response formats does your client need?" list)
+1. Add the XML template to `.claude/skills/build-custom-connection/SKILL.md` under the "Metadata templates" section
+2. Add the format as an option in Step 1 question 2 (the "What response formats does your client need?" list) in both SKILL.md and `.claude/commands/build-custom-connection.md`
 3. Add a row to the "Available Response Formats" table in `README.md`
 4. Add an example to `GUIDE.md` under Step 4
+5. If it's a channel-specific format set (like WhatsApp or Instagram), also add:
+   - Template files in `templates/<channel>-response-formats/`
+   - Webhook handler templates in `templates/<channel>-webhook/option-a-apex/` and `option-b-node/`
+   - A solution guide doc at `docs/<CHANNEL>.md`
+   - Channel-specific rules in the "Important rules" section of SKILL.md
 
 Each response format needs:
 - A `<description>` — tells the agent WHEN to use this format
@@ -36,7 +41,7 @@ Each response format needs:
 ## Testing your changes
 
 Run the skill locally and verify:
-- It asks exactly 3 questions (no more)
+- It asks 4-5 questions (client name, formats, instructions, optional MIAW handoff, optional webhook handler)
 - It auto-generates a surface ID
 - The generated files are valid XML
 - `deploy.sh` runs without errors against a test org (if you have one)

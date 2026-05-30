@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AiSurface xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Custom connection for {Client Display Name} on Instagram.</description>
+    <instructions>
+        <instruction>{User's custom instruction 1}</instruction>
+        <sortOrder>1</sortOrder>
+    </instructions>
+    <instructions>
+        <instruction>Do not use response formats where the response contains more than 7 choices.</instruction>
+        <sortOrder>2</sortOrder>
+    </instructions>
+    <instructions>
+        <instruction>Do not use any of the {ClientName}* type formatting where the response contains only a single, text-only choice without images or URLs.</instruction>
+        <sortOrder>3</sortOrder>
+    </instructions>
+    <masterLabel>{Client Display Name} Instagram</masterLabel>
+</AiSurface>
