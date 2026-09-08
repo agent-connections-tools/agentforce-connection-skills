@@ -294,6 +294,70 @@ Agent: <the message text>
 
 **Unknown format:** Pretty-print the raw JSON.
 
+## Step 10b: Analyze rendering method
+
+After displaying each response (Step 10), analyze and report how the response was rendered. This analysis runs after EVERY turn — including turns in the multi-turn loop — so admins can see if rendering behavior changes across turns.
+
+### Deterministic vs. dynamic rendering detection
+
+Check the response payload for rendering indicators:
+
+1. **If `result[]` contains an entry with a `type` field starting with `SURFACE_ACTION__`:**
+   - The format was applied. Extract the format name (strip `SURFACE_ACTION__` prefix).
+   - Check whether this action has a `renderAs` mapping for this connection (from the bundle XML parsed in Step 3). Look for a `<renderAs>` block where `<surface>` matches the connection's surface name and `<responseFormat>` matches the format that was used.
+   - **If renderAs match found:** Report as deterministic:
+     ```
+     Rendering: Deterministic (render_as)
+       The platform used "<format name>" because render_as is configured
+       for this action on this connection.
+     ```
+   - **If no renderAs match (or no renderAs configured):** Report as dynamic:
+     ```
+     Rendering: Dynamic (LLM-selected)
+       The agent chose "<format name>" from available formats.
+       No render_as mapping exists for this action on this connection.
+     ```
+
+2. **If `result[]` is empty and this is a Custom connection:**
+   ```
+   Rendering: Plain text
+     No response format was applied. The agent returned plain text.
+   ```
+
+3. **If this is a standard connection:**
+   ```
+   Rendering: Standard connection
+     Standard connections use platform-default rendering.
+   ```
+
+### render_as mapping display
+
+When render_as is detected (deterministic rendering), show the mapping chain:
+
+```
+render_as chain:
+  Action:            <action developer name>
+  render_as target:  <response format name>
+  Connection:        <connection name> (<type>)
+```
+
+If the connection is a messaging channel (WhatsApp, Teams, Messaging), add a note about the component:
+```
+  Rendered as:       <component type> (e.g., quick reply buttons, adaptive card, rich card)
+```
+
+### Per-turn rendering summary table
+
+Show this table after each turn's response rendering:
+
+```
+Rendering Summary
+  Format applied:  <format name> | None
+  Selection:       Deterministic (render_as) | Dynamic (LLM) | N/A
+  render_as:       <format name> | Not configured
+  Channel support: Supported | N/A (standard connection)
+```
+
 ## Step 11: Multi-turn loop (opt-in, capped at 5)
 
 After showing the response, ask:
@@ -302,7 +366,8 @@ After showing the response, ask:
 If the user wants to continue:
 - Increment `sequenceId` (1, 2, 3...) in subsequent message requests
 - Send the next message in the same session
-- Render the response the same way
+- Render the response the same way (Step 10)
+- Run the rendering analysis (Step 10b) after each turn's response
 
 If the user is done, OR if 5 turns have elapsed without a structured format on a Custom connection: end the loop.
 
@@ -354,6 +419,7 @@ PRE-FLIGHT
 TEST SEQUENCE
   ✓ Session created
   ✓ Turn 1: "<user message>" → <plain text|<format name>>
+    Rendering: <Deterministic (render_as) | Dynamic (LLM) | Plain text | Standard>
   [...additional turns...]
   ✓ Response shape valid (matched <local file path>)
 
@@ -361,6 +427,12 @@ WHAT THE AGENT RETURNED
   <human-readable rendering from Step 10>
 
   Schema source: <path to local .aiResponseFormat file used, or "none — raw JSON shown">
+
+RENDERING
+  Format applied:  <format name> | None
+  Selection:       Deterministic (render_as) | Dynamic (LLM) | N/A
+  render_as:       <format name> | Not configured
+  Channel support: Supported | N/A (standard connection)
 
 WARNINGS (N)
   ⚠ <plain English description>
@@ -405,7 +477,13 @@ Save to `/tmp/test-connection-report.json`. The schema version is `test-connecti
   ],
   "response": {
     "format": "<format name or 'plain_text' or 'standard_connection'>",
-    "raw": "<the parsed result[].value, or null if no structured response>"
+    "raw": "<the parsed result[].value, or null if no structured response>",
+    "rendering": {
+      "method": "deterministic|dynamic|plain_text|standard_connection",
+      "renderAsConfigured": true,
+      "renderAsTarget": "<format name or null>",
+      "actionName": "<action that produced this response, if identifiable>"
+    }
   }
 }
 ```

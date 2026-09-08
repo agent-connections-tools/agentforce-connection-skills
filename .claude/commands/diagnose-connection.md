@@ -238,6 +238,93 @@ If the batch dry-run fails:
 - If valid → passed
 - If no local files found → this check is **skipped** (not passed, not a warning). Use status "skipped" in the JSON report. Don't include it in the pass or warning counts. Add an info note after the checklist: "I couldn't check your response format JSON schemas because there are no local .aiResponseFormat files in this directory. If you have the source files, run this skill from that directory."
 
+### Connection prompt customization check
+
+Check whether the connection has admin-edited instructions beyond the defaults.
+
+**For custom connections:**
+
+Retrieve the AiSurface using a manifest-based retrieve (**do not use `--metadata` flag for AiSurface**):
+
+```bash
+mkdir -p "$WORK_DIR/surface-check"
+cat > "$WORK_DIR/surface-check/package.xml" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>$SURFACE_NAME</members>
+        <name>AiSurface</name>
+    </types>
+    <version>$ORG_API_VERSION</version>
+</Package>
+EOF
+
+cd "$WORK_DIR" && sf project retrieve start --manifest "$WORK_DIR/surface-check/package.xml" --target-org $ORG_ALIAS --output-dir "$WORK_DIR/surface-retrieved/"
+```
+
+Parse the `<instructions>` elements from the retrieved AiSurface XML. Classify each instruction:
+
+- **Default boilerplate** (pattern match — the `{ClientName}` prefix varies):
+  - Contains "more than 7 choices" or "more than N choices"
+  - Contains "single, text-only choice" and "type formatting"
+- **Channel guidance** — contains keywords like "WhatsApp", "Teams", "portal", "carousel", "hero card", "quick reply", "CTA URL"
+- **Custom** — anything else
+
+Report:
+- If custom instructions found → info (not warning): "Connection prompt has been customized (N custom instruction(s), N total). Use `preview-connection-prompt` to see the full prompt."
+- If only default/channel instructions → info: "Connection prompt is using default instructions (N instruction(s), no admin edits)."
+- If AiSurface can't be retrieved → skip this check with note: "Couldn't retrieve surface configuration — prompt check skipped."
+
+**For standard connections:**
+
+Try the same manifest-based retrieve using the surface name from the bundle.
+- If an AiSurface exists with instructions → info: "Standard connection has custom instructions configured (N instruction(s))."
+- If no AiSurface or no instructions → info: "Standard connection using platform defaults."
+
+### render_as configuration check
+
+Check whether any actions have deterministic rendering configured for this connection.
+
+Look inside the bundle XML for `<renderAs>` blocks within each `<plannerActions>` entry. A render_as mapping looks like:
+
+```xml
+<renderAs>
+    <surface>ConnectionName_ID</surface>
+    <responseFormat>FormatName_ID</responseFormat>
+</renderAs>
+```
+
+For each connection being checked:
+- Search all `<plannerActions>` for `<renderAs>` entries where `<surface>` matches the connection's surface name
+- If found → info: "Deterministic rendering (render_as) is configured for N action(s): [list action developerNames]. These actions will always use their mapped response format on this connection."
+- If none found → info: "No render_as configured — the agent uses LLM-based format selection for all actions on this connection."
+
+This is informational only — neither presence nor absence is a warning.
+
+### Response format support check
+
+Cross-reference the connection's response formats against its connection type.
+
+From the AiSurface XML (retrieved above), check `<responseFormats>` entries with `<enabled>true</enabled>`.
+
+**Custom connections:**
+- If response formats are present and enabled → passed: "N response format(s) enabled on this connection."
+- If NO response formats → warning: "Custom connection has no response formats configured. Without formats, the agent can only send plain text through this connection. Use `update-connection` to add response formats."
+
+**Messaging / ECv2 (standard):**
+- If response formats found → info: "Standard connection has N custom response format(s) configured."
+- If no response formats → info: "Standard connection using platform-default response rendering." (Not a warning — custom formats are optional for standard connections.)
+
+**Telephony:**
+- If response formats found → warning: "Telephony connections don't support response formats. These will be ignored at runtime."
+- If no response formats → passed (skip — telephony shouldn't have them)
+
+**Web / Email / Other standard:**
+- If response formats found → info: "N response format(s) configured. Note: format support varies by connection type."
+- If no response formats → info (not a warning): "No custom response formats — using platform defaults."
+
+**If AiSurface couldn't be retrieved:** Skip this check with note: "Couldn't retrieve surface configuration — response format support check skipped."
+
 ## Step 6: Show the results
 
 ### Top priority line
@@ -258,14 +345,24 @@ Start the report with a single line about the most important thing to fix:
 
 YOUR CONNECTIONS
   1. Telephony — ✓ Standard connection, no issues
+     ℹ Standard connection using platform defaults
+     ℹ No render_as configured
+     ℹ No response formats (expected for telephony)
   2. Web Chat — ✓ Standard connection, no issues
+     ℹ Standard connection using platform defaults
+     ℹ No render_as configured
   3. Email — ✓ Standard connection, no issues
-  4. BaxterCreditUnion_BCU01 (Custom)
+  4. Messaging — ✓ Standard connection, no issues
+     ℹ Standard connection has 2 custom response format(s) configured
+  5. BaxterCreditUnion_BCU01 (Custom)
      ✓ Connection deployed in org
      ✓ Adaptive responses enabled
      ✓ Only 1 custom connection (within limit)
      ✓ No duplicate connections
      ✓ 2 response formats found and validated
+     ℹ Connection prompt has been customized (2 custom instruction(s), 5 total)
+     ℹ Deterministic rendering (render_as) configured for 2 action(s): Look_Up_Order, Check_Inventory
+     ✓ 2 response format(s) enabled on this connection
 
 WARNINGS (N)
   ⚠ <plain English description>
@@ -300,13 +397,29 @@ Save to `/tmp/diagnose-report.json` and tell the user where it is:
   "checks": [
     {
       "name": "<check_name>",
-      "status": "passed|warning|failed|skipped",
+      "status": "passed|warning|failed|skipped|info",
       "detail": "<plain English detail>",
       "fix": "<fix instruction, only for warning/failed>"
     }
-  ]
+  ],
+  "promptStatus": {
+    "isCustomized": true,
+    "customInstructionCount": 2,
+    "totalInstructionCount": 5
+  },
+  "renderAsStatus": {
+    "configured": true,
+    "mappingCount": 2,
+    "actions": ["Look_Up_Order", "Check_Inventory"]
+  },
+  "responseFormatSupport": {
+    "formatsEnabled": 3,
+    "connectionTypeSupported": true
+  }
 }
 ```
+
+The `promptStatus`, `renderAsStatus`, and `responseFormatSupport` sections are per-connection — if checking "all" connections, nest them under a `connections` array with one entry per connection. Set any section to `null` if that check was skipped (AiSurface not retrievable).
 
 ## Error handling
 
@@ -319,7 +432,7 @@ Save to `/tmp/diagnose-report.json` and tell the user where it is:
 ## Important rules
 
 - **NEVER change anything in the org.** This skill is read-only. Dry-run deploys don't write anything.
-- **NEVER use `--metadata` flag for AiSurface or AiResponseFormat retrieval** — the CLI blocks these types. Use `sf org list metadata --metadata-type` to list them, and `--metadata-dir` with `--dry-run` for validation.
+- **NEVER use `--metadata` flag for AiSurface or AiResponseFormat retrieval** — the CLI blocks these types. Use `sf org list metadata --metadata-type` to list them, and `--metadata-dir` with `--dry-run` for validation. For full AiSurface XML retrieval (needed by the prompt/render_as/format checks), use `--manifest` with a package.xml — that works where `--metadata "AiSurface:Name"` doesn't.
 - **Always use `--metadata-dir` (not `--manifest`)** for deploy operations.
 - **Use the real surface name for dry-run validation** — not a generated stub. The dry-run treats existing surfaces as "Changed" updates, so using the real name is safe and validates exactly what's deployed.
 - **Clean up temp directories** at the end: `rm -rf $WORK_DIR`
