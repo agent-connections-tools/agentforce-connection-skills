@@ -131,11 +131,14 @@ function extractMessage(payload) {
                 text = message.text?.body || '';
                 break;
             case 'interactive':
-                // User tapped a button or selected from a list
+                // User tapped a button or selected from a list (or completed a Flow)
                 if (message.interactive?.type === 'button_reply') {
                     text = message.interactive.button_reply?.id || '';
                 } else if (message.interactive?.type === 'list_reply') {
                     text = message.interactive.list_reply?.id || '';
+                } else if (message.interactive?.type === 'nfm_reply') {
+                    const responseJson = message.interactive.nfm_reply?.response_json;
+                    text = responseJson ? `[Flow Response] ${responseJson}` : '';
                 }
                 break;
             default:
@@ -294,6 +297,7 @@ async function callAgentAPI(session, userMessage) {
 //   WhatsAppList     → interactive.type: "list"     (sections with rows)
 //   WhatsAppMedia    → type: "image" or "video"
 //   WhatsAppCarousel → template with CAROUSEL component (approximated as images)
+//   WhatsAppFlow     → interactive.type: "flow"     (triggers a pre-created Flow)
 //   Plain text       → type: "text"
 function translateToWhatsApp(agentResponse) {
     const messages = [];
@@ -353,6 +357,8 @@ function translateStructuredResponse(structured) {
             return [buildMediaMessage(structured)];
         case 'WhatsAppCarousel':
             return buildCarouselMessages(structured);
+        case 'WhatsAppFlow':
+            return [buildFlowMessage(structured)];
         default:
             // Unknown format — extract text and send as plain message
             const bodyText = structured.body || structured.text || JSON.stringify(structured);
@@ -464,6 +470,44 @@ function buildCarouselMessages(data) {
     }
 
     return messages;
+}
+
+// Builds a WhatsApp Flow message (triggers a pre-created Flow by ID)
+function buildFlowMessage(data) {
+    const parameters = {
+        flow_message_version: '3',
+        flow_token: `flow-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+        flow_id: data.flowId,
+        flow_cta: truncate(data.flowCta || 'Open', 20),
+        flow_action: data.flowAction || 'navigate',
+    };
+
+    if (data.screenName) {
+        parameters.flow_action_payload = {
+            screen: data.screenName,
+        };
+        if (data.prefillData && typeof data.prefillData === 'object') {
+            parameters.flow_action_payload.data = data.prefillData;
+        }
+    }
+
+    const interactive = {
+        type: 'flow',
+        body: { text: data.body || '' },
+        action: {
+            name: 'flow',
+            parameters,
+        },
+    };
+
+    if (data.header) {
+        interactive.header = { type: 'text', text: data.header };
+    }
+    if (data.footer) {
+        interactive.footer = { text: data.footer };
+    }
+
+    return { type: 'interactive', interactive };
 }
 
 // ─── SEND TO WHATSAPP ────────────────────────────────────────────────────────

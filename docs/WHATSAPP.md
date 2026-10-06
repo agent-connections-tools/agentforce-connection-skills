@@ -6,7 +6,7 @@ Solution Guide — Custom Connections for WhatsApp
 
 ## Introduction
 
-Agentforce agents can respond with rich media on WhatsApp — carousels, quick reply buttons, image/video cards, list pickers, and CTA URL buttons. This guide explains how to set it up using **Custom Connections**, a feature that lets you define structured response formats your agent can use on any channel you control.
+Agentforce agents can respond with rich media on WhatsApp — carousels, quick reply buttons, image/video cards, list pickers, CTA URL buttons, and interactive Flows. This guide explains how to set it up using **Custom Connections**, a feature that lets you define structured response formats your agent can use on any channel you control.
 
 Instead of plain text, your agent outputs structured JSON that matches Meta's WhatsApp interactive message schemas. A lightweight webhook handler bridges the two APIs. The result: your customers see native WhatsApp rich media (scrollable cards, tappable buttons, expandable lists) powered by Agentforce's reasoning engine and CRM data.
 
@@ -42,7 +42,7 @@ The skill generates all response format files, the AiSurface definition, and opt
 sf project deploy start --source-dir unpackaged/ --target-org your-org-alias
 ```
 
-This deploys the 5 WhatsApp response formats and the AiSurface (Custom Connection definition) to your org.
+This deploys the 6 WhatsApp response formats and the AiSurface (Custom Connection definition) to your org.
 
 ### Step 3: Wire the Custom Connection to your agent
 
@@ -51,7 +51,7 @@ This deploys the 5 WhatsApp response formats and the AiSurface (Custom Connectio
 3. Add the Custom Connection you just deployed (it will appear by name)
 4. Save
 
-Your agent now knows it can respond with carousels, quick replies, lists, and media cards on WhatsApp.
+Your agent now knows it can respond with carousels, quick replies, lists, media cards, CTA buttons, and interactive Flows on WhatsApp.
 
 ### Step 4: Create the External Client App (ECA)
 
@@ -219,9 +219,9 @@ The `surfaceType: "Custom"` is what activates the WhatsApp response formats from
 1. **Customer sends a WhatsApp message** — Meta's Cloud API receives it
 2. **Your webhook handler receives the event** — Lightweight service you host
 3. **Webhook calls Agent API with surfaceType: "Custom"** — Activates WhatsApp response formats
-4. **Agentforce agent reasons about intent** — Picks the right format for the response
+4. **Agentforce agent reasons about intent** — Picks the right format for the response (or triggers a Flow)
 5. **Agent returns structured JSON** — Already matches Meta's interactive message schema
-6. **Webhook forwards JSON to Meta's Send Message API** — Customer sees rich cards in WhatsApp
+6. **Webhook forwards JSON to Meta's Send Message API** — Customer sees rich cards or interactive Flows in WhatsApp
 
 ---
 
@@ -247,6 +247,7 @@ The `surfaceType: "Custom"` is what activates the WhatsApp response formats from
 | Media Card | Image or video with caption text | Product photos, how-to videos | Image: 5MB, Video: 16MB |
 | Carousel | Horizontal scrollable cards | Product comparisons, catalogs | 2-10 cards, each with image + 2 buttons |
 | CTA URL Button | 1-2 tappable URL buttons | Payment links, document links, external portals | Max 2 buttons, 25 chars each |
+| WhatsApp Flow | Multi-screen interactive form | Appointment booking, surveys, lead qualification, order forms | Pre-created in Meta Business Manager; agent triggers by Flow ID |
 
 ### How the Agent Picks the Right Format
 
@@ -259,6 +260,7 @@ The agent automatically selects the format based on context:
 | "Which store is nearest?" | List Message | Multiple options grouped by city |
 | "Show me the product details" | Media Card | Single image with descriptive caption |
 | "How do I pay my bill?" | CTA URL Button | Redirects to payment portal — no raw links in chat |
+| "I'd like to book an appointment" | WhatsApp Flow | Multi-step form with pre-filled CRM data (name, email) |
 
 ---
 
@@ -266,7 +268,11 @@ The agent automatically selects the format based on context:
 
 ### Does Agentforce support multimodal interactions on WhatsApp?
 
-**Yes**, via Custom Connections. The agent outputs structured JSON matching Meta's interactive message schemas. All four rich format types (carousel, buttons, list, media) are supported today on GA Agentforce.
+**Yes**, via Custom Connections. The agent outputs structured JSON matching Meta's interactive message schemas. All six rich format types (carousel, buttons, list, media, CTA URL buttons, and Flows) are supported today on GA Agentforce.
+
+### How do WhatsApp Flows work with Agentforce?
+
+WhatsApp Flows are multi-screen interactive forms (appointment booking, surveys, lead qualification) that you pre-create in Meta Business Manager. Unlike the other 5 formats where the agent generates the content dynamically, Flows are pre-built in Meta and the agent triggers them by Flow ID when the conversation calls for it. The agent can pre-fill form fields with CRM data (customer name, email, account details) so the user doesn't have to re-enter information you already have. When the user completes the Flow, their responses come back through the webhook as a structured JSON payload.
 
 ### What about outbound template messages?
 
@@ -292,7 +298,7 @@ We have a **Custom Connections skill** that generates the entire Agentforce-side
 
 | Generated | Purpose |
 |-----------|---------|
-| 5 WhatsApp response formats | Pre-built schemas matching Meta's API with character limits enforced |
+| 6 WhatsApp response formats | Pre-built schemas matching Meta's API with character limits enforced |
 | Custom Connection definition | Tells the agent "this channel supports these rich formats" |
 | Surface instructions | Tells the agent WHEN to pick each format (buttons vs list vs carousel) |
 | Automated deploy script | One command deploys everything and wires it to the agent |
@@ -328,6 +334,22 @@ Card 3:
 ```
 
 The webhook forwards this structured JSON directly to Meta's Send Message API. The customer sees scrollable product cards in WhatsApp.
+
+### WhatsApp Flow Example
+
+When a customer says *"I'd like to book an appointment"*, the agent returns:
+
+```
+Body: "Let's get your appointment set up."
+Flow ID: "1234567890"
+CTA Button: "Book Appointment"
+Pre-fill Data:
+  customer_name: "Jane Smith" (from Contact record)
+  customer_email: "jane@example.com" (from Contact record)
+  preferred_location: "Downtown" (from last case)
+```
+
+The webhook translates this into Meta's Flow message format. The customer sees a "Book Appointment" button. When tapped, the Flow opens with their name and email pre-filled. After they complete the form, the response comes back through the webhook as a structured payload the agent can act on.
 
 ---
 

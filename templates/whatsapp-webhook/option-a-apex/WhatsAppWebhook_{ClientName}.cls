@@ -114,6 +114,10 @@ global with sharing class WhatsAppWebhook_{ClientName} {
                 } else if (interactiveType == 'list_reply') {
                     Map<String, Object> listReply = (Map<String, Object>) interactive.get('list_reply');
                     text = (String) listReply.get('id');
+                } else if (interactiveType == 'nfm_reply') {
+                    Map<String, Object> nfmReply = (Map<String, Object>) interactive.get('nfm_reply');
+                    String responseJson = (String) nfmReply.get('response_json');
+                    text = responseJson != null ? '[Flow Response] ' + responseJson : '';
                 }
             } else {
                 // Unsupported message type (image, audio, etc.)
@@ -302,11 +306,12 @@ global with sharing class WhatsAppWebhook_{ClientName} {
         // JSON response and converts it into Meta's WhatsApp message format.
         //
         // Supported mappings:
-        //   WhatsAppButtons → interactive.type: "button"
-        //   WhatsAppList    → interactive.type: "list"
-        //   WhatsAppMedia   → type: "image" or "video"
+        //   WhatsAppButtons  → interactive.type: "button"
+        //   WhatsAppList     → interactive.type: "list"
+        //   WhatsAppMedia    → type: "image" or "video"
         //   WhatsAppCarousel → multiple image messages with caption
-        //   Plain text      → type: "text"
+        //   WhatsAppFlow     → interactive.type: "flow" (triggers a pre-created Flow)
+        //   Plain text       → type: "text"
         private List<Map<String, Object>> convertToMetaFormat(String agentResponseBody) {
             List<Map<String, Object>> messages = new List<Map<String, Object>>();
 
@@ -381,6 +386,8 @@ global with sharing class WhatsAppWebhook_{ClientName} {
                 messages.add(buildMediaMessage(structured));
             } else if (responseType == 'WhatsAppCarousel') {
                 messages.addAll(buildCarouselMessages(structured));
+            } else if (responseType == 'WhatsAppFlow') {
+                messages.add(buildFlowMessage(structured));
             } else {
                 // Unknown format — extract any text content and send as plain text
                 String bodyText = (String) structured.get('body');
@@ -572,6 +579,60 @@ global with sharing class WhatsAppWebhook_{ClientName} {
             }
 
             return messages;
+        }
+
+        // Builds a WhatsApp Flow message (triggers a pre-created Flow by ID)
+        private Map<String, Object> buildFlowMessage(Map<String, Object> data) {
+            String bodyText = (String) data.get('body');
+            String headerText = (String) data.get('header');
+            String footerText = (String) data.get('footer');
+            String flowId = (String) data.get('flowId');
+            String flowCta = (String) data.get('flowCta');
+            String flowAction = (String) data.get('flowAction');
+            String screenName = (String) data.get('screenName');
+            Map<String, Object> prefillData = (Map<String, Object>) data.get('prefillData');
+
+            Map<String, Object> parameters = new Map<String, Object>{
+                'flow_message_version' => '3',
+                'flow_token' => 'flow-' + EncodingUtil.convertToHex(Crypto.generateAesKey(128)).substring(0, 16),
+                'flow_id' => flowId,
+                'flow_cta' => flowCta != null ? truncate(flowCta, 20) : 'Open',
+                'flow_action' => flowAction != null ? flowAction : 'navigate'
+            };
+
+            if (String.isNotBlank(screenName)) {
+                Map<String, Object> actionPayload = new Map<String, Object>{
+                    'screen' => screenName
+                };
+                if (prefillData != null && !prefillData.isEmpty()) {
+                    actionPayload.put('data', prefillData);
+                }
+                parameters.put('flow_action_payload', actionPayload);
+            }
+
+            Map<String, Object> interactive = new Map<String, Object>{
+                'type' => 'flow',
+                'body' => new Map<String, Object>{ 'text' => bodyText != null ? bodyText : '' },
+                'action' => new Map<String, Object>{
+                    'name' => 'flow',
+                    'parameters' => parameters
+                }
+            };
+
+            if (String.isNotBlank(headerText)) {
+                interactive.put('header', new Map<String, Object>{
+                    'type' => 'text',
+                    'text' => headerText
+                });
+            }
+            if (String.isNotBlank(footerText)) {
+                interactive.put('footer', new Map<String, Object>{ 'text' => footerText });
+            }
+
+            return new Map<String, Object>{
+                'type' => 'interactive',
+                'interactive' => interactive
+            };
         }
 
         // ─── SEND TO WHATSAPP ────────────────────────────────────────────────────
