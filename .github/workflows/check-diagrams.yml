@@ -1,0 +1,22 @@
+name: Check no ASCII diagrams
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'templates/**/README.md'
+      - 'scripts/check_no_ascii_diagrams.py'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'templates/**/README.md'
+      - 'scripts/check_no_ascii_diagrams.py'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ASCII-diagram regression guard
+        run: python3 scripts/check_no_ascii_diagrams.py

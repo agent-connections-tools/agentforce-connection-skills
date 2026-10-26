@@ -237,31 +237,4 @@ For a production deployment handling real user traffic:
 
 ## How It Works (Architecture)
 
-```
-Teams User
-     |
-     v
-Bot Framework ──POST──> Node.js Express App (/api/messages)
-  (JWT auth)                     |
-                       ┌─────────┴──────────┐
-                       v                    v
-                Session Lookup        Salesforce OAuth
-               (in-memory Map)      (Client Credentials)
-                       |                    |
-                       └─────────┬──────────┘
-                                 v
-                        Agent API Call
-                   (POST /sessions/:id/messages)
-                                 |
-                                 v
-                      translateToTeams()
-                   (convert response formats)
-                                 |
-                                 v
-                  POST to Bot Framework REST API
-             ({serviceUrl}/v3/conversations/{id}/activities)
-                                 |
-                                 v
-                        Teams User sees
-                          rich response
-```
+![Teams + Node webhook architecture](./architecture.png)
